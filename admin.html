@@ -1,0 +1,25 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>교사용 · 명제 챌린지</title>
+<style>*{box-sizing:border-box}body{margin:0;background:#f3f5fa;color:#1f2540;font:16px/1.5 system-ui,'Noto Sans KR',sans-serif;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}.w{max-width:760px;margin:0 auto;padding:20px 16px 40px}.c{background:#fff;border:1px solid #d9deee;border-radius:12px;padding:16px;margin:12px 0}input{width:100%;font:inherit;padding:12px;border:1px solid #c5cce2;border-radius:8px;margin:6px 0 12px}button{font:inherit;padding:10px 14px;border-radius:8px;border:1px solid #c5cce2;background:#fff;cursor:pointer;margin:4px 6px 4px 0}button.p{background:#3b4fd6;color:#fff;border-color:#3b4fd6}table{width:100%;border-collapse:collapse}td,th{padding:8px;border-bottom:1px solid #e6e9f5;text-align:left}.r{overflow-x:auto}.s{color:#5b6585;font-size:14px}</style></head>
+<body><div class="w" id="app"></div>
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import {getFirestore,collection,getDocs,deleteDoc,doc} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import {getAuth,signInWithEmailAndPassword,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+/* ▼ index.html과 같은 Firebase 설정값 */
+const cfg={apiKey:"AIzaSyBlhgDlqHh2zzyqwsyJ0WQGQXNIUttrtkc",authDomain:"math-quiz-bb8ad.firebaseapp.com",projectId:"math-quiz-bb8ad",appId:"1:631904496083:web:ba0846c537c7c824762726"};
+const app=initializeApp(cfg),db=getFirestore(app),au=getAuth(app),A=document.getElementById('app'),$=i=>document.getElementById(i);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function login(m=''){A.innerHTML=`<h1>🍎 교사용 관리</h1><div class="c"><label>이메일</label><input id="em" type="email"><label>비밀번호</label><input id="pw" type="password"><button class="p" id="go">로그인</button><p class="s">${m}</p></div>`;
+ $('go').onclick=async()=>{try{await signInWithEmailAndPassword(au,$('em').value.trim(),$('pw').value)}catch(e){login('로그인에 실패했어요.')}}}
+async function board(m=''){A.innerHTML='<h1>🍎 교사용 관리</h1><p>불러오는 중…</p>';let rows=[];
+ try{rows=(await getDocs(collection(db,'scores'))).docs.map(d=>({id:d.id,...d.data()}))}catch(e){m='불러오기 실패: 규칙과 로그인을 확인하세요.'}
+ rows.sort((a,b)=>b.score-a.score);
+ A.innerHTML=`<h1>🍎 교사용 관리</h1><p class="s">${m}</p><div class="c"><b>랭킹 (학번별 최고 점수, 총 ${rows.length}명)</b><div class="r"><table><tr><th>순위</th><th>학번</th><th>점수</th><th>정답</th><th>기록 시각</th><th></th></tr>${rows.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.sid)}</td><td>${r.score}</td><td>${r.n}</td><td>${new Date(r.t).toLocaleString('ko-KR')}</td><td><button data-d="${esc(r.id)}">삭제</button></td></tr>`).join('')}</table></div></div>
+<button id="rf">새로고침</button><button id="rs">랭킹 전체 초기화</button><button id="lo">로그아웃</button>
+<div class="c s"><b>비밀번호를 잊은 학생</b><br>Firebase 콘솔 > Authentication > 사용자에서 <code>학번@mj-student.example.com</code> 계정을 삭제하면, 학생이 같은 학번으로 다시 입장해 새 비밀번호를 정할 수 있어요. 기록은 위 표에서 학번 기준으로 남아 있거나 삭제할 수 있어요.</div>`;
+ $('rf').onclick=()=>board();$('lo').onclick=()=>signOut(au);
+ $('rs').onclick=async e=>{if(!e.target.dataset.c){e.target.dataset.c=1;e.target.textContent='한 번 더 누르면 전부 삭제됩니다';return}
+  try{await Promise.all(rows.map(r=>deleteDoc(doc(db,'scores',r.id))))}catch(x){}board('초기화했어요.')};
+ A.querySelectorAll('[data-d]').forEach(b=>b.onclick=async()=>{try{await deleteDoc(doc(db,'scores',b.dataset.d))}catch(x){}board()})}
+onAuthStateChanged(au,u=>{if(!u)login();else if(/^\d{5}@/.test(u.email||'')){signOut(au);login('교사 계정이 아닙니다.')}else board()});
+</script></body></html>
