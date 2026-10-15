@@ -12,7 +12,7 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 function login(m=''){A.innerHTML=`<h1>🍎 교사용 관리</h1><div class="c"><label>이메일</label><input id="em" type="email"><label>비밀번호</label><input id="pw" type="password"><button class="p" id="go">로그인</button><p class="s">${m}</p></div>`;
  $('go').onclick=async()=>{try{await signInWithEmailAndPassword(au,$('em').value.trim(),$('pw').value)}catch(e){login('로그인에 실패했어요.')}}}
 async function board(m=''){A.innerHTML='<h1>🍎 교사용 관리</h1><p>불러오는 중…</p>';let rows=[];
- try{rows=(await getDocs(collection(db,'scores'))).docs.map(d=>({id:d.id,...d.data()}))}catch(e){m='불러오기 실패: 규칙과 로그인을 확인하세요.'}
+ try{rows=(await getDocs(collection(db,'scores'))).docs.map(d=>({id:d.id,...d.data()}))}catch(e){m='불러오기 실패 ('+(e.code||e)+')'}
  rows.sort((a,b)=>b.score-a.score);
  A.innerHTML=`<h1>🍎 교사용 관리</h1><p class="s">${m}</p><div class="c"><b>랭킹 (학번별 최고 점수, 총 ${rows.length}명)</b><div class="r"><table><tr><th>순위</th><th>학번</th><th>점수</th><th>정답</th><th>기록 시각</th><th></th></tr>${rows.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.sid)}</td><td>${r.score}</td><td>${r.n}</td><td>${new Date(r.t).toLocaleString('ko-KR')}</td><td><button data-d="${esc(r.id)}">삭제</button></td></tr>`).join('')}</table></div></div>
 <button id="rf">새로고침</button><button id="rs">랭킹 전체 초기화</button><button id="lo">로그아웃</button>
