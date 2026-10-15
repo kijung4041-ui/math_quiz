@@ -52,7 +52,7 @@ const shuf=a=>a.map(v=>[Math.random(),v]).sort((x,y)=>x[0]-y[0]).map(x=>x[1]);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={g(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v==null?d:v}catch(e){return d}},s(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 const R=h=>{A.innerHTML='<div class="w">'+h+'</div>'};
-let name='',G=null;
+let name='',G=null,ERR='';
 const M={time:{e:'⏱️',n:'타임어택',d:'180초 안에 최대한 많이! 랭킹 기록',time:180},free:{e:'♾️',n:'무한 연습',d:'시간 제한 없이 · 해설 확인'},chal:{e:'🔥',n:'챌린지',d:'10문제 연속 정답이면 레벨업'},boss:{e:'👾',n:'보스전',d:'어려운 문제 5개 · 목숨 3개'}};
 
 /* 문제은행: [난이도, 유형, 문제, 보기, 정답 인덱스, 해설] */
@@ -159,19 +159,19 @@ function ans(i){
  else document.getElementById('fb').innerHTML=`<div class="card"><b>${esc(msg)}</b><br><span class="s">${esc(q.ex)}</span></div><button class="b" data-a="nx">${G.done?'결과 보기':'다음 문제'}</button>`}
 async function save(){
  const r={sid:name,score:G.score,n:G.correct,t:Date.now()},l=LS.g('mj_sc',[]);l.push(r);LS.s('mj_sc',l.slice(-200));
- try{if(db){const ref=doc(db,'scores',name),o=await getDoc(ref);if(!o.exists()||o.data().score<r.score)await setDoc(ref,r);return true}}catch(e){}return false}
+ try{if(db){const ref=doc(db,'scores',name),o=await getDoc(ref);if(!o.exists()||o.data().score<r.score)await setDoc(ref,r);return true}}catch(e){ERR=e.code||String(e)}return false}
 async function finish(){
  if(G.fin)return;G.fin=1;clearInterval(G.iv);let note='';
- if(G.mode=='time'&&G.total>0)note=(await save())?'랭킹에 기록했어요.':'이 기기에만 기록했어요.';
+ if(G.mode=='time'&&G.total>0)note=(await save())?'랭킹에 기록했어요.':'이 기기에만 기록했어요. (오류: '+ERR+')';
  const win=G.mode=='boss'&&G.correct>=5;
  R(`<h1>${win?'🏆 ':'🎉 '}${G.mode=='boss'?(win?'보스 클리어!':'보스전 종료'):'결과'}</h1><div class="card"><div style="font-size:34px;font-weight:900">${G.score}점</div><div class="sub" style="margin:0">정답 ${G.correct} / ${G.total}${G.mode=='chal'?' · Lv.'+G.lv:''}</div>${note?`<p style="margin:8px 0 0">${note}</p>`:''}</div>${G.wrong.length?`<div class="card"><b>틀린 문제</b>${G.wrong.slice(0,8).map(q=>`<p>${esc(q.q)}<br><span class="s">정답: ${esc(q.ch[q.ans])} — ${esc(q.ex)}</span></p>`).join('')}</div>`:''}<button class="b" data-a="start" data-v="${G.mode}">다시 하기</button><button class="b g" data-a="rank">랭킹 보기</button><button class="b g" data-a="menu">모드 선택</button>`)}
 async function rank(){
  clearInterval(G&&G.iv);R('<h1>🏆 랭킹</h1><p class="sub">불러오는 중…</p>');let rows=[],shared=false;
- try{if(db){const q=await getDocs(collection(db,'scores'));rows=q.docs.map(d=>d.data());shared=true}}catch(e){}
+ try{if(db){const q=await getDocs(collection(db,'scores'));rows=q.docs.map(d=>d.data());shared=true}}catch(e){ERR=e.code||String(e)}
  if(!shared)rows=LS.g('mj_sc',[]);
  const best={};rows.forEach(r=>{if(!best[r.sid]||r.score>best[r.sid].score)best[r.sid]=r});
  const top=Object.values(best).sort((a,b)=>b.score-a.score).slice(0,20),med=['🥇','🥈','🥉'];
- R(`<h1>🏆 타임어택 랭킹</h1><p class="sub">${shared?'명제 단원 · 학번별 최고 점수':'이 기기에서 한 기록만 표시됩니다'}</p>${top.length?top.map((r,i)=>`<div class="card row${r.sid==name?' me':''}"><b>${med[i]||i+1}</b><span>${esc(r.sid)}</span><span>${r.score}점</span></div>`).join(''):'<div class="card">아직 기록이 없어요. 타임어택으로 첫 기록을 남겨 보세요 ✨</div>'}<button class="b g" data-a="menu">돌아가기</button>`)}
+ R(`<h1>🏆 타임어택 랭킹</h1><p class="sub">${shared?'명제 단원 · 학번별 최고 점수':'이 기기에서 한 기록만 표시됩니다 (오류: '+ERR+')'}</p>${top.length?top.map((r,i)=>`<div class="card row${r.sid==name?' me':''}"><b>${med[i]||i+1}</b><span>${esc(r.sid)}</span><span>${r.score}점</span></div>`).join(''):'<div class="card">아직 기록이 없어요. 타임어택으로 첫 기록을 남겨 보세요 ✨</div>'}<button class="b g" data-a="menu">돌아가기</button>`)}
 
 (async()=>{if(au){await au.authStateReady();const u=au.currentUser;if(u&&/^\d{5}@/.test(u.email||'')){name=u.email.split('@')[0];menu();return}}home()})();
 </script></body></html>
