@@ -1,4 +1,4 @@
-<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>교사용 · 명제 챌린지</title>
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>교사용 · 수학 챌린지</title><script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>*{box-sizing:border-box}body{margin:0;background:#f3f5fa;color:#1f2540;font:16px/1.5 system-ui,'Noto Sans KR',sans-serif;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}.w{max-width:760px;margin:0 auto;padding:20px 16px 40px}.c{background:#fff;border:1px solid #d9deee;border-radius:12px;padding:16px;margin:12px 0}input{width:100%;font:inherit;padding:12px;border:1px solid #c5cce2;border-radius:8px;margin:6px 0 12px}button{font:inherit;padding:10px 14px;border-radius:8px;border:1px solid #c5cce2;background:#fff;cursor:pointer;margin:4px 6px 4px 0}button.p{background:#3b4fd6;color:#fff;border-color:#3b4fd6}table{width:100%;border-collapse:collapse}td,th{padding:8px;border-bottom:1px solid #e6e9f5;text-align:left}.r{overflow-x:auto}.s{color:#5b6585;font-size:14px}</style></head>
 <body><div class="w" id="app"></div>
 <script type="module">
@@ -12,14 +12,23 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 function login(m=''){A.innerHTML=`<h1>🍎 교사용 관리</h1><div class="c"><label>이메일</label><input id="em" type="email"><label>비밀번호</label><input id="pw" type="password"><button class="p" id="go">로그인</button><p class="s">${m}</p></div>`;
  $('go').onclick=async()=>{try{await signInWithEmailAndPassword(au,$('em').value.trim(),$('pw').value)}catch(e){login('로그인에 실패했어요.')}}}
 async function board(m=''){A.innerHTML='<h1>🍎 교사용 관리</h1><p>불러오는 중…</p>';let rows=[];
- try{rows=(await getDocs(collection(db,'scores'))).docs.map(d=>({id:d.id,...d.data()}))}catch(e){m='불러오기 실패 ('+(e.code||e)+')'}
- rows.sort((a,b)=>b.score-a.score);
- A.innerHTML=`<h1>🍎 교사용 관리</h1><p class="s">${m}</p><div class="c"><b>랭킹 (학번별 최고 점수, 총 ${rows.length}명)</b><div class="r"><table><tr><th>순위</th><th>학번</th><th>점수</th><th>정답</th><th>기록 시각</th><th></th></tr>${rows.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.sid)}</td><td>${r.score}</td><td>${r.n}</td><td>${new Date(r.t).toLocaleString('ko-KR')}</td><td><button data-d="${esc(r.id)}">삭제</button></td></tr>`).join('')}</table></div></div>
-<button id="rf">새로고침</button><button id="rs">랭킹 전체 초기화</button><button id="lo">로그아웃</button>
+ try{rows=(await getDocs(collection(db,'rank'))).docs.map(d=>({id:d.id,...d.data()}))}catch(e){m='불러오기 실패 ('+(e.code||e)+')'}
+ rows.sort((a,b)=>a.unit>b.unit?1:a.unit<b.unit?-1:b.score-a.score);
+ A.innerHTML=`<h1>🍎 교사용 관리</h1><p class="s">${m}</p><div class="c"><b>랭킹 (학번별 최고 점수, 총 ${rows.length}명)</b><div class="r"><table><tr><th>순위</th><th>단원</th><th>학번</th><th>점수</th><th>정답</th><th>기록 시각</th><th></th></tr>${rows.map((r,i)=>`<tr><td>${i+1}</td><td>${{p:'명제',f:'함수',r:'유리·무리'}[r.unit]||r.unit}</td><td>${esc(r.sid)}</td><td>${r.score}</td><td>${r.n}</td><td>${new Date(r.t).toLocaleString('ko-KR')}</td><td><button data-d="${esc(r.id)}">삭제</button></td></tr>`).join('')}</table></div></div>
+<button id="rf">새로고침</button><button id="rs">랭킹 전체 초기화</button><button id="lo">로그아웃</button><button id="ck0">문제 파일 검수</button><div id="ck" class="c s" style="white-space:pre-line;display:none"></div>
 <div class="c s"><b>비밀번호를 잊은 학생</b><br>Firebase 콘솔 > Authentication > 사용자에서 <code>학번@mj-student.example.com</code> 계정을 삭제하면, 학생이 같은 학번으로 다시 입장해 새 비밀번호를 정할 수 있어요. 기록은 위 표에서 학번 기준으로 남아 있거나 삭제할 수 있어요.</div>`;
- $('rf').onclick=()=>board();$('lo').onclick=()=>signOut(au);
+ $('rf').onclick=()=>board();
+ $('ck0').onclick=async()=>{const o=$('ck');o.style.display='block';o.textContent='검사 중…';
+  try{const wb=XLSX.read(await(await fetch('questions.xlsx?v='+Date.now())).arrayBuffer()),out=[];
+   for(const n of wb.SheetNames){if(n=='사용법'||n=='입력도우미')continue;let ok=0;
+    XLSX.utils.sheet_to_json(wb.Sheets[n],{defval:''}).forEach((r,i)=>{const q=String(r['문제']).trim();if(!q||String(r['사용']).trim().toUpperCase()=='N')return;
+     const t=String(r['유형']).trim(),a=String(r['정답']).trim(),ch=[1,2,3,4].map(k=>String(r['보기'+k]).trim());let e='';
+     if(t=='ox'){if(a!='O'&&a!='X')e='O/X 문제의 정답은 O 또는 X'}else if(t=='mc4'){if(ch.some(c=>!c))e='보기 4개가 모두 필요';else if(!['1','2','3','4'].includes(a))e='정답은 1~4'}else e='유형은 mc4 또는 ox';
+     if(e)out.push('⚠ '+n+' '+(i+2)+'행: '+e);else ok++});
+    out.unshift('✔ '+n+': 사용 가능한 문제 '+ok+'개')}
+   o.textContent=out.join('\n')}catch(x){o.textContent='questions.xlsx를 불러오지 못했어요.'}};$('lo').onclick=()=>signOut(au);
  $('rs').onclick=async e=>{if(!e.target.dataset.c){e.target.dataset.c=1;e.target.textContent='한 번 더 누르면 전부 삭제됩니다';return}
-  try{await Promise.all(rows.map(r=>deleteDoc(doc(db,'scores',r.id))))}catch(x){}board('초기화했어요.')};
- A.querySelectorAll('[data-d]').forEach(b=>b.onclick=async()=>{try{await deleteDoc(doc(db,'scores',b.dataset.d))}catch(x){}board()})}
-onAuthStateChanged(au,u=>{if(!u)login();else if(/^\d{5}@/.test(u.email||'')){signOut(au);login('교사 계정이 아닙니다.')}else board()});
+  try{await Promise.all(rows.map(r=>deleteDoc(doc(db,'rank',r.id))))}catch(x){}board('초기화했어요.')};
+ A.querySelectorAll('[data-d]').forEach(b=>b.onclick=async()=>{try{await deleteDoc(doc(db,'rank',b.dataset.d))}catch(x){}board()})}
+onAuthStateChanged(au,u=>{if(!u)login();else if(/^\d{5}@/.test(u.email||'')){login('학생 계정으로 로그인된 상태예요. 교사 계정으로 로그인해 주세요.')}else board()});
 </script></body></html>

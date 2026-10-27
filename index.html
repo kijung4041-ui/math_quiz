@@ -1,7 +1,11 @@
 <!doctype html>
 <html lang="ko"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>명제 챌린지</title>
+<title>수학 챌린지</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
 :root{--card:#fff;--ink:#35305a;--sub:#6e6890;--pri:#6a5ae0;--on:#fff;--line:#e4dcf7;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -25,6 +29,7 @@ input:focus,button:focus-visible{outline:3px solid var(--pri);outline-offset:2px
 .em{font-size:34px}
 .b.ok{background:#b7f0c8;border-color:#2f9e5a;color:#14532d}
 .b.bad{background:#ffd0d0;border-color:#d64545;color:#7f1d1d}
+.tabs{display:flex;gap:8px}.tabs .b.t{min-height:48px;justify-content:center;font-size:14px;padding:8px;text-align:center;margin-top:8px}.b:disabled{opacity:.5;cursor:not-allowed}.m.p{background:#e0d4ff}.m.f{background:#d3f0ff}.m.r{background:#ffe3cf}
 .grid{display:grid;gap:0 12px}
 @media(min-width:600px){.grid{grid-template-columns:1fr 1fr}}
 .bar{display:flex;justify-content:space-between;align-items:center;font-weight:700;margin:4px 0}
@@ -40,8 +45,8 @@ input:focus,button:focus-visible{outline:3px solid var(--pri);outline-offset:2px
 <body><div id="app"></div>
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-import {getFirestore,collection,getDocs,doc,getDoc,setDoc} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
-import {getAuth,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import {getFirestore,collection,getDocs,doc,getDoc,setDoc,query,where} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import {getAuth,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 /* ▼ Firebase 콘솔 > 프로젝트 설정 > 내 앱(웹)에서 복사한 값으로 교체 */
 const cfg={apiKey:"AIzaSyBlhgDlqHh2zzyqwsyJ0WQGQXNIUttrtkc",authDomain:"math-quiz-bb8ad.firebaseapp.com",projectId:"math-quiz-bb8ad",appId:"1:631904496083:web:ba0846c537c7c824762726"};
 const FB=cfg.apiKey!=="YOUR_API_KEY";let db=null,au=null;
@@ -51,27 +56,18 @@ const rnd=(a,b)=>a+Math.floor(Math.random()*(b-a+1)),pick=a=>a[rnd(0,a.length-1)
 const shuf=a=>a.map(v=>[Math.random(),v]).sort((x,y)=>x[0]-y[0]).map(x=>x[1]);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS={g(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v==null?d:v}catch(e){return d}},s(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
-const R=h=>{A.innerHTML='<div class="w">'+h+'</div>'};
+const R=h=>{A.innerHTML='<div class="w">'+h+'</div>';if(window.renderMathInElement)renderMathInElement(A,{delimiters:[{left:'$',right:'$',display:false}],throwOnError:false})};
 let name='',G=null,ERR='';
 const M={time:{e:'⏱️',n:'타임어택',d:'180초 안에 최대한 많이! 랭킹 기록',time:180},free:{e:'♾️',n:'무한 연습',d:'시간 제한 없이 · 해설 확인'},chal:{e:'🔥',n:'챌린지',d:'10문제 연속 정답이면 레벨업'},boss:{e:'👾',n:'보스전',d:'어려운 문제 5개 · 목숨 3개'}};
 
-/* 문제은행: [난이도, 유형, 문제, 보기, 정답 인덱스, 해설] */
-const B=[
-[1,'ox',"'√16은 무리수이다.'는 명제이다.",['O','X'],0,'√16=4는 유리수라 거짓이지만, 참·거짓이 분명하면 명제입니다.'],
-[2,'mc',"'x는 3의 배수이고 짝수이다.'의 부정은?",['3의 배수가 아니고 홀수이다','3의 배수이거나 짝수이다','3의 배수가 아니거나 홀수이다','3의 배수이고 홀수이다'],2,"'이고'의 부정은 '또는'으로 바뀝니다."],
-[2,'ox',"전체집합이 실수 전체일 때, '어떤 실수 x에 대하여 x²+4≤0이다.'는 참이다.",['O','X'],1,'x²+4는 항상 4 이상이라 만족하는 x가 없습니다.'],
-[2,'mc',"전체집합이 자연수 전체일 때, '어떤 x에 대하여 x²=9이다.'의 부정은?",['어떤 x에 대하여 x²≠9이다','모든 x에 대하여 x²=9이다','모든 x에 대하여 x²<9이다','모든 x에 대하여 x²≠9이다'],3,"'어떤'의 부정은 '모든 ~가 아니다'입니다."],
-[2,'mc','다음 중 거짓인 명제는?',['x=2이면 x²=4이다','x가 6의 배수이면 x는 3의 배수이다','x²>1이면 x>1이다','x가 4의 배수이면 x는 2의 배수이다'],2,'x=−2이면 x²>1이지만 x>1이 아닙니다(반례).'],
-[2,'mc',"명제 'x>0이면 x²>x이다.'가 거짓임을 보이는 반례는?",['x=2','x=1/2','x=−1','x=3'],1,'가정(x>0)은 만족하고 결론은 만족하지 않아야 합니다.'],
-[1,'mc',"명제 'x=3이면 x²=9이다.'의 대우는?",['x²=9이면 x=3이다','x≠3이면 x²≠9이다','x²≠9이면 x≠3이다','x²≠9이면 x=3이다'],2,'대우는 가정과 결론을 바꾸고 각각 부정합니다.'],
-[1,'ox','명제가 참이면 그 역도 항상 참이다.',['O','X'],1,"'x=2이면 x²=4'는 참이지만 역은 거짓입니다."],
-[3,'mc','명제 p→~q가 참일 때, 항상 참인 명제는?',['~p→q','q→~p','~q→p','~p→~q'],1,'참인 명제와 참·거짓이 항상 같은 것은 대우 q→~p입니다.'],
-[3,'mc','a, b가 실수일 때 p: ab>0, q: a>0이고 b>0이면 p는 q이기 위한?',['충분조건','필요조건','필요충분조건','충분조건도 필요조건도 아니다'],1,'q→p는 참, p→q는 거짓(a=b=−1)입니다.'],
-[2,'mc',"귀류법으로 '√5는 무리수이다.'를 증명할 때 처음 하는 가정은?",['√5는 무리수이다','√5는 자연수이다','√5는 정수가 아니다','√5는 유리수이다'],3,'결론을 부정한 가정에서 시작합니다.'],
-[1,'ox',"'삼각형의 세 내각의 크기의 합은 180°이다.'는 정의이다.",['O','X'],1,'증명된 성질이므로 정리입니다.'],
-[2,'mc','x가 실수일 때, 절대부등식인 것은?',['x²−2x+1>0','x²+1>0','x²−4≥0','|x|>0'],1,'x²+1≥1이라 항상 성립합니다. ①은 x=1, ④는 x=0일 때 성립하지 않습니다.'],
-[3,'mc','x²−6x+9≥0에서 등호가 성립할 때 x의 값은?',['0','3','−3','9'],1,'(x−3)²≥0이므로 x=3일 때 등호가 성립합니다.']
-];
+/* 단원과 문제 파일(questions.xlsx) */
+const UN=[{id:'p',sheet:'명제',n:'명제',e:'🧩',d:'집합과 명제'},{id:'f',sheet:'함수',n:'함수',e:'📈',d:'함수와 그래프'},{id:'r',sheet:'유리함수와무리함수',n:'유리함수·무리함수',e:'🌀',d:'유리함수와 무리함수'}];
+let B=[],QS={},LOADERR='',UNIT='p';
+async function loadQ(){try{const r=await fetch('questions.xlsx?v='+Date.now());if(!r.ok)throw 0;const wb=XLSX.read(await r.arrayBuffer());
+ UN.forEach(u=>{QS[u.id]=[];const ws=wb.Sheets[u.sheet];if(!ws)return;
+  XLSX.utils.sheet_to_json(ws,{defval:''}).forEach(o=>{const t=String(o['유형']).trim(),q=String(o['문제']).trim(),a=String(o['정답']).trim(),ch=[1,2,3,4].map(i=>String(o['보기'+i]).trim()),ox=t=='ox',ans=ox?(a=='O'?0:a=='X'?1:-1):+a-1;
+   if(!q||String(o['사용']).trim().toUpperCase()=='N'||(t!='mc4'&&!ox)||(ox?ans<0:(ch.some(c=>!c)||!(ans>=0&&ans<4))))return;
+   QS[u.id].push([+o['난이도']||2,ox?'ox':'mc',q,ox?['O','X']:ch,ans,String(o['해설'])])})})}catch(e){LOADERR='문제 파일(questions.xlsx)을 불러오지 못했어요.'}}
 function mk(d,t,q,ch,ans,ex){if(t!='ox'){const a=ch[ans];ch=shuf(ch);ans=ch.indexOf(a)}return{d,t,q,ch,ans,ex}}
 
 /* 템플릿 1: 진리집합 (정답은 코드로 계산) */
@@ -96,12 +92,26 @@ function tCond(){
  else{const L=[2,3,4,6,8,9,12],m=pick(L),n=pick(L);if(m==n)return tCond();q=`p: x는 ${m}의 배수, q: x는 ${n}의 배수 (x는 정수)`;r=m%n==0?0:n%m==0?1:3}
  return mk(2,'mc',`${q}일 때, p는 q이기 위한 무슨 조건인가?`,['충분조건','필요조건','필요충분조건','충분조건도 필요조건도 아니다'],r,'진리집합 P, Q의 포함 관계로 판단합니다. P⊂Q이면 충분, Q⊂P이면 필요, P=Q이면 필요충분조건입니다.')}
 
-function pickQ(){
- const m=G.mode;
- if(Math.random()<(m=='time'?.7:.5))return pick(m=='boss'?[tCond]:[tSet,tCond])();
+/* 템플릿 3: 모든/어떤 명제의 부정 */
+function tNeg(){const all=Math.random()<.5,k=rnd(1,4),m=rnd(2,9),e=`x²−${2*k}x+${m}`,ng={'>':'≤','≥':'<','<':'≥','≤':'>'},fl={'>':'<','≥':'≤','<':'>','≤':'≥'},r=pick(['>','≥','<','≤']),
+ s=(a,o)=>`${a?'모든':'어떤'} 실수 x에 대하여 ${e}${o}0이다`;
+ return mk(2,'mc',`'${s(all,r)}.'의 부정은?`,[s(!all,ng[r]),s(!all,r),s(all,ng[r]),s(!all,fl[r])],0,`'모든'은 '어떤'으로, '어떤'은 '모든'으로 바꾸고 부등호를 부정합니다(>는 ≤, ≥는 <).`)}
+/* 템플릿 4: 참인 명제의 대우 추론 */
+function tLogic(){const[v,w]=Math.random()<.5?['p','q']:['q','p'],n=a=>a[0]=='~'?a.slice(1):'~'+a,X=Math.random()<.5?v:'~'+v,Y=Math.random()<.5?w:'~'+w,f=(a,b)=>a+' → '+b,c=f(n(Y),n(X));
+ return mk(3,'mc',`명제 '${f(X,Y)}'가 참일 때, 항상 참인 명제는?`,[c,f(Y,X),f(n(X),n(Y)),f(X,n(Y))],0,`참인 명제의 대우는 항상 참입니다. '${f(X,Y)}'의 대우는 '${c}'입니다.`)}
+/* 템플릿 5: 보기 조합형 */
+function tComb(){const L=[2,3,4,6,8,9,12],g=[()=>{const a=pick(L),b=pick(L);return a==b?null:[`x가 ${a}의 배수이면 x는 ${b}의 배수이다`,a%b==0]},()=>{const s=rnd(2,6);return[`x²=${s*s}이면 x=${s}이다`,false]},()=>{const k=rnd(1,5);return[`x>${k}이면 x²>${k*k}이다`,true]},()=>{const k=rnd(1,5);return[`x²>${k*k}이면 x>${k}이다`,false]},()=>[`x가 ${pick([4,6,8,10])}의 배수이면 x는 짝수이다`,true]];
+ let st;for(;;){st=shuf([0,1,2,3,4]).slice(0,3).map(i=>g[i]());const t=st.filter(a=>a&&a[1]).length;if(st.every(Boolean)&&t>0&&t<3)break}
+ const lb=m=>[...m].map(i=>'ㄱㄴㄷ'[i]).join(', '),cs=[0,1,2].filter(i=>st[i][1]).join(''),o=shuf(['0','1','2','01','02','12','012'].filter(x=>x!=cs)).slice(0,3);
+ return mk(3,'mc',`x가 정수일 때, 다음 <보기> 중 참인 명제만을 있는 대로 고른 것은?\nㄱ. ${st[0][0]}.\nㄴ. ${st[1][0]}.\nㄷ. ${st[2][0]}.`,[cs,...o].map(lb),0,`각 명제의 반례를 찾아 참·거짓을 확인합니다. 참인 것은 ${lb(cs)}입니다.`)}
+tCond.h=tNeg.h=tLogic.h=tComb.h=1;
+const TP={p:[tSet,tCond,tNeg,tLogic,tComb]};
+
+function pickQ(){const m=G.mode,tp=TP[UNIT]||[];
+ if(tp.length&&(!B.length||Math.random()<(m=='time'?.7:.5))){const pl=m=='boss'?tp.filter(f=>f.h):tp;let c=pl.filter(f=>!G.lt.includes(f));if(!c.length)c=pl;const f=pick(c);G.lt=[f,...G.lt].slice(0,2);return f()}
  const all=B.map((x,i)=>i).filter(i=>m!='boss'||B[i][0]>1);
- let p=all.filter(i=>!G.used.has(i));if(!p.length){G.used.clear();p=all}
- const i=pick(p);G.used.add(i);const x=B[i];return mk(...x)}
+ let p=all.filter(i=>!G.used.has(i));if(!p.length){G.used.clear();p=all.length?all:B.map((x,i)=>i)}
+ const i=pick(p);G.used.add(i);return mk(...B[i])}
 
 const em=id=>id+'@mj-student.example.com',pwd=p=>p+'mj',g=i=>document.getElementById(i);
 const acts={
@@ -117,18 +127,19 @@ const acts={
    catch(e2){er.textContent=e2.code=='auth/email-already-in-use'?'비밀번호가 달라요. 다시 확인해 주세요.':'입장에 실패했어요. 잠시 후 다시 시도해 주세요.';return}}
   name=id;menu()},
  async logout(){if(au)await signOut(au);name='';home()},
- home,menu,rank,back(){name?menu():home()},
+ home,menu,modes,rank,back(){name?menu():home()},unit(b){UNIT=b.dataset.v;modes()},ru(b){UNIT=b.dataset.v;rank()},
  start(b){start(b.dataset.v)},ans(b){ans(+b.dataset.v)},nx(){G.done?finish():next()},quit(){finish()}
 };
 A.onclick=e=>{const b=e.target.closest('[data-a]');if(b&&acts[b.dataset.a])acts[b.dataset.a](b)};
 A.oninput=e=>{if(e.target.matches('#sid,#pin'))e.target.value=e.target.value.replace(/\D/g,'')};
 
-function home(){R(`<div class="hero">🦊</div><h1>명제 챌린지</h1><p class="sub">공통수학2 · 집합과 명제</p><div class="card"><label for="sid">학번 (숫자 5자리)</label><input id="sid" inputmode="numeric" maxlength="5" autocomplete="username" placeholder="예: 10215"><label for="pin" style="margin-top:14px">비밀번호 (숫자 4자리)</label><input id="pin" type="password" inputmode="numeric" maxlength="4" autocomplete="current-password" placeholder="••••"><button class="b" data-a="go">🚀 입장하기</button><p id="er" class="s" style="margin:10px 0 0"></p><p class="s" style="font-size:13px;margin:6px 0 0">처음 입장하면 자동으로 가입돼요. 학번과 비밀번호는 이 게임 랭킹에만 쓰이고, 랭킹에는 학번이 표시됩니다.</p></div>`)}
-function menu(){clearInterval(G&&G.iv);R(`<div class="hero">🦊</div><h1>${esc(name)} 님, 반가워요!</h1><p class="sub">단원: 명제 · 모드를 골라 보세요</p><div class="grid">${Object.entries(M).map(([k,m])=>`<button class="b m ${k}" data-a="start" data-v="${k}"><span class="em">${m.e}</span><span>${m.n}<small>${m.d}</small></span></button>`).join('')}</div><button class="b g" data-a="rank">🏆 랭킹 보기</button><button class="b g" data-a="logout">👋 로그아웃</button>`)}
+function home(){R(`<div class="hero">🦊</div><h1>수학 챌린지</h1><p class="sub">공통수학2 · 단원별 게임</p><div class="card"><label for="sid">학번 (숫자 5자리)</label><input id="sid" inputmode="numeric" maxlength="5" autocomplete="username" placeholder="예: 10215"><label for="pin" style="margin-top:14px">비밀번호 (숫자 4자리)</label><input id="pin" type="password" inputmode="numeric" maxlength="4" autocomplete="current-password" placeholder="••••"><button class="b" data-a="go">🚀 입장하기</button><p id="er" class="s" style="margin:10px 0 0"></p><p class="s" style="font-size:13px;margin:6px 0 0">처음 입장하면 자동으로 가입돼요. 학번과 비밀번호는 이 게임 랭킹에만 쓰이고, 랭킹에는 학번이 표시됩니다.</p></div>`)}
+function menu(){clearInterval(G&&G.iv);R(`<div class="hero">🦊</div><h1>${esc(name)} 님, 반가워요!</h1><p class="sub">${LOADERR||'공부할 단원을 골라 보세요'}</p><div class="grid">${UN.map(u=>{const n=(QS[u.id]||[]).length+(TP[u.id]?1:0);return `<button class="b m ${u.id}" data-a="unit" data-v="${u.id}"${n?'':' disabled'}><span class="em">${u.e}</span><span>${u.n}<small>${n?u.d:'준비 중'}</small></span></button>`}).join('')}</div><button class="b g" data-a="rank">🏆 랭킹 보기</button><button class="b g" data-a="logout">👋 로그아웃</button>`)}
+function modes(){const u=UN.find(x=>x.id==UNIT);R(`<div class="hero">${u.e}</div><h1>${u.n}</h1><p class="sub">모드를 골라 보세요</p><div class="grid">${Object.entries(M).map(([k,m])=>`<button class="b m ${k}" data-a="start" data-v="${k}"><span class="em">${m.e}</span><span>${m.n}<small>${m.d}</small></span></button>`).join('')}</div><button class="b g" data-a="rank">🏆 랭킹 보기</button><button class="b g" data-a="menu">← 단원 선택</button>`)}
 
 function start(mode){
  clearInterval(G&&G.iv);
- G={mode,score:0,streak:0,correct:0,total:0,lives:3,lv:1,used:new Set(),wrong:[],end:Date.now()+(M[mode].time||0)*1000};
+ B=QS[UNIT]||[];G={lt:[],mode,score:0,streak:0,correct:0,total:0,lives:3,lv:1,used:new Set(),wrong:[],end:Date.now()+(M[mode].time||0)*1000};
  if(mode=='time')G.iv=setInterval(tick,250);
  next()}
 function stat(){const m=G.mode;if(m=='time')return Math.max(0,Math.ceil((G.end-Date.now())/1000))+'초';
@@ -141,7 +152,7 @@ function next(){if(G.fin)return;G.q=pickQ();G.lock=false;G.done=false;const q=G.
  R(`<div class="bar"><span>${M[G.mode].e} ${M[G.mode].n}</span><span>점수 <b id="sc">${G.score}</b></span></div>
 <div class="bar s"><span id="cb">${G.streak>1?'🔥 '+G.streak+'연속':''}</span><span id="st">${stat()}</span></div>
 <div class="pg"><i id="pg"></i></div>
-<div class="card"><div class="s">${['','쉬움','보통','어려움'][q.d]}</div><div style="font-size:19px;font-weight:700">${esc(q.q)}</div></div>
+<div class="card"><div class="s">${['','쉬움','보통','어려움'][q.d]}</div><div style="font-size:19px;font-weight:700;white-space:pre-line">${esc(q.q)}</div></div>
 ${q.ch.map((c,i)=>`<button class="b g" data-a="ans" data-v="${i}">${q.t=='ox'?'':'①②③④'[i]+' '}${esc(c)}</button>`).join('')}
 <div id="fb"></div><button class="b g" data-a="quit" style="margin-top:24px">그만하기</button>`);setPg()}
 function ans(i){
@@ -158,20 +169,22 @@ function ans(i){
  if(m=='time'){setTimeout(next,ok?350:900);document.getElementById('fb').innerHTML=`<p><b>${esc(msg)}</b></p>`}
  else document.getElementById('fb').innerHTML=`<div class="card"><b>${esc(msg)}</b><br><span class="s">${esc(q.ex)}</span></div><button class="b" data-a="nx">${G.done?'결과 보기':'다음 문제'}</button>`}
 async function save(){
- const r={sid:name,score:G.score,n:G.correct,t:Date.now()},l=LS.g('mj_sc',[]);l.push(r);LS.s('mj_sc',l.slice(-200));
- let st='인증';try{if(db){await au.authStateReady();st='읽기';const ref=doc(db,'scores',name),o=await getDoc(ref);st='쓰기';if(!o.exists()||o.data().score<r.score)await setDoc(ref,r);return true}}catch(e){ERR=st+' '+(e.code||String(e))+' / '+(au&&au.currentUser?au.currentUser.email:'로그인없음')}return false}
+ const r={sid:name,unit:UNIT,score:G.score,n:G.correct,t:Date.now()},l=LS.g('mj_sc',[]);l.push(r);LS.s('mj_sc',l.slice(-200));
+ let st='인증';try{if(db){await au.authStateReady();st='읽기';const ref=doc(db,'rank',UNIT+'_'+name),o=await getDoc(ref);st='쓰기';if(!o.exists()||o.data().score<r.score)await setDoc(ref,r);return true}}catch(e){ERR=st+' '+(e.code||String(e))}return false}
 async function finish(){
  if(G.fin)return;G.fin=1;clearInterval(G.iv);let note='';
  if(G.mode=='time'&&G.total>0)note=(await save())?'랭킹에 기록했어요.':'이 기기에만 기록했어요. (오류: '+ERR+')';
  const win=G.mode=='boss'&&G.correct>=5;
- R(`<h1>${win?'🏆 ':'🎉 '}${G.mode=='boss'?(win?'보스 클리어!':'보스전 종료'):'결과'}</h1><div class="card"><div style="font-size:34px;font-weight:900">${G.score}점</div><div class="sub" style="margin:0">정답 ${G.correct} / ${G.total}${G.mode=='chal'?' · Lv.'+G.lv:''}</div>${note?`<p style="margin:8px 0 0">${note}</p>`:''}</div>${G.wrong.length?`<div class="card"><b>틀린 문제</b>${G.wrong.slice(0,8).map(q=>`<p>${esc(q.q)}<br><span class="s">정답: ${esc(q.ch[q.ans])} — ${esc(q.ex)}</span></p>`).join('')}</div>`:''}<button class="b" data-a="start" data-v="${G.mode}">다시 하기</button><button class="b g" data-a="rank">랭킹 보기</button><button class="b g" data-a="menu">모드 선택</button>`)}
+ R(`<h1>${win?'🏆 ':'🎉 '}${G.mode=='boss'?(win?'보스 클리어!':'보스전 종료'):'결과'}</h1><div class="card"><div style="font-size:34px;font-weight:900">${G.score}점</div><div class="sub" style="margin:0">정답 ${G.correct} / ${G.total}${G.mode=='chal'?' · Lv.'+G.lv:''}</div>${note?`<p style="margin:8px 0 0">${note}</p>`:''}</div>${G.wrong.length?`<div class="card"><b>틀린 문제</b>${G.wrong.slice(0,8).map(q=>`<p>${esc(q.q)}<br><span class="s">정답: ${esc(q.ch[q.ans])} — ${esc(q.ex)}</span></p>`).join('')}</div>`:''}<button class="b" data-a="start" data-v="${G.mode}">다시 하기</button><button class="b g" data-a="rank">랭킹 보기</button><button class="b g" data-a="modes">모드 선택</button>`)}
 async function rank(){
  clearInterval(G&&G.iv);R('<h1>🏆 랭킹</h1><p class="sub">불러오는 중…</p>');let rows=[],shared=false;
- try{if(db){const q=await getDocs(collection(db,'scores'));rows=q.docs.map(d=>d.data());shared=true}}catch(e){ERR=e.code||String(e)}
- if(!shared)rows=LS.g('mj_sc',[]);
+ try{if(db){const q=await getDocs(query(collection(db,'rank'),where('unit','==',UNIT)));rows=q.docs.map(d=>d.data());shared=true}}catch(e){ERR=e.code||String(e)}
+ if(!shared)rows=LS.g('mj_sc',[]).filter(r=>r.unit==UNIT);
  const best={};rows.forEach(r=>{if(!best[r.sid]||r.score>best[r.sid].score)best[r.sid]=r});
- const top=Object.values(best).sort((a,b)=>b.score-a.score).slice(0,20),med=['🥇','🥈','🥉'];
- R(`<h1>🏆 타임어택 랭킹</h1><p class="sub">${shared?'명제 단원 · 학번별 최고 점수':'이 기기에서 한 기록만 표시됩니다 (오류: '+ERR+')'}</p>${top.length?top.map((r,i)=>`<div class="card row${r.sid==name?' me':''}"><b>${med[i]||i+1}</b><span>${esc(r.sid)}</span><span>${r.score}점</span></div>`).join(''):'<div class="card">아직 기록이 없어요. 타임어택으로 첫 기록을 남겨 보세요 ✨</div>'}<button class="b g" data-a="menu">돌아가기</button>`)}
+ const all=Object.values(best).sort((a,b)=>b.score-a.score),top=all.slice(0,10),med=['🥇','🥈','🥉'],mi=all.findIndex(r=>r.sid==name);
+ const row=(r,i)=>`<div class="card row${r.sid==name?' me':''}"><b>${med[i]||i+1}</b><span>${esc(r.sid)}</span><span>${r.score}점</span></div>`;
+ R(`<h1>🏆 타임어택 랭킹</h1><div class="tabs">${UN.map(x=>`<button class="b ${x.id==UNIT?'':'g'} t" data-a="ru" data-v="${x.id}">${x.e} ${x.n}</button>`).join('')}</div><p class="sub" style="margin-top:12px">${shared?'상위 10명 · 학번별 최고 점수':'이 기기에서 한 기록만 표시됩니다 (오류: '+ERR+')'}</p>${top.length?top.map(row).join(''):'<div class="card">아직 기록이 없어요. 타임어택으로 첫 기록을 남겨 보세요 ✨</div>'}${mi>=10?'<p class="sub">내 순위</p>'+row(all[mi],mi):''}<button class="b g" data-a="menu">돌아가기</button>`)}
 
-(async()=>{if(au){await au.authStateReady();const u=au.currentUser;if(u&&/^\d{5}@/.test(u.email||'')){name=u.email.split('@')[0];menu();return}}home()})();
+if(au)onAuthStateChanged(au,u=>{if(!u&&name){clearInterval(G&&G.iv);name='';home()}});
+(async()=>{await loadQ();if(au){await au.authStateReady();const u=au.currentUser;if(u&&/^\d{5}@/.test(u.email||'')){name=u.email.split('@')[0];menu();return}}home()})();
 </script></body></html>
