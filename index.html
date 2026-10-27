@@ -224,7 +224,7 @@ const acts={
    catch(e2){er.textContent=e2.code=='auth/email-already-in-use'?'비밀번호가 달라요. 다시 확인해 주세요.':'입장에 실패했어요. 잠시 후 다시 시도해 주세요.';return}}
   name=id;await loadU();menu()},
  async logout(){if(au)await signOut(au);name='';home()},
- home,menu,modes,rank,achv,goal(b){UD.goal=+b.dataset.v;saveU();menu()},back(){name?menu():home()},pm(b){MODE=b.dataset.v;units()},unit(b){UNIT=b.dataset.v;start(MODE)},ru(b){UNIT=b.dataset.v;rank()},
+ home,menu,units,rank,achv,goal(b){UD.goal=+b.dataset.v;saveU();menu()},back(){name?menu():home()},pm(b){MODE=b.dataset.v;units()},unit(b){UNIT=b.dataset.v;start(MODE)},ru(b){UNIT=b.dataset.v;rank()},
  start(b){start(b.dataset.v)},ans(b){ans(+b.dataset.v)},nx(){G.done?finish():next()},quit(){finish()}
 };
 A.onclick=e=>{const b=e.target.closest('[data-a]');if(b&&acts[b.dataset.a])acts[b.dataset.a](b)};
