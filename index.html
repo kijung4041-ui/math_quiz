@@ -104,11 +104,64 @@ function tComb(){const L=[2,3,4,6,8,9,12],g=[()=>{const a=pick(L),b=pick(L);retu
  let st;for(;;){st=shuf([0,1,2,3,4]).slice(0,3).map(i=>g[i]());const t=st.filter(a=>a&&a[1]).length;if(st.every(Boolean)&&t>0&&t<3)break}
  const lb=m=>[...m].map(i=>'ㄱㄴㄷ'[i]).join(', '),cs=[0,1,2].filter(i=>st[i][1]).join(''),o=shuf(['0','1','2','01','02','12','012'].filter(x=>x!=cs)).slice(0,3);
  return mk(3,'mc',`x가 정수일 때, 다음 <보기> 중 참인 명제만을 있는 대로 고른 것은?\nㄱ. ${st[0][0]}.\nㄴ. ${st[1][0]}.\nㄷ. ${st[2][0]}.`,[cs,...o].map(lb),0,`각 명제의 반례를 찾아 참·거짓을 확인합니다. 참인 것은 ${lb(cs)}입니다.`)}
-tCond.h=tNeg.h=tLogic.h=tComb.h=1;
-const TP={p:[tSet,tCond,tNeg,tLogic,tComb]};
+/* 템플릿 6: 진리집합 → 조건 고르기 */
+function tSet2(){const N=rnd(10,15),I=[...Array(N)].map((_,i)=>i+1),S=[];
+ [6,8,9,10,12,14,15,18,20,24].forEach(k=>S.push([`x는 ${k}의 약수이다`,I.filter(i=>k%i==0)]));[2,3,4,5,6,7].forEach(m=>S.push([`x는 ${m}의 배수이다`,I.filter(i=>i%m==0)]));
+ const c=pick(S.filter(a=>a[1].length>1)),o=[c],seen=new Set([setS(c[1])]);
+ shuf(S).forEach(a=>{const k=setS(a[1]);if(o.length<4&&a[1].length&&!seen.has(k)){seen.add(k);o.push(a)}});
+ return mk(2,'mc',`전체집합 U={x | x는 ${N} 이하의 자연수}일 때, 진리집합이 ${setS(c[1])}인 조건은?`,o.map(a=>a[0]),0,'각 조건의 진리집합을 U 안에서 구해 비교합니다.')}
+/* 템플릿 7: 조건의 부정과 진리집합 */
+function tNegSet(){const N=rnd(10,14),U=[...Array(N)].map((_,i)=>i+1),pr=n=>n>1&&[...Array(n)].every((_,i)=>i<2||n%i),
+ F=[['짝수',x=>x%2==0],['홀수',x=>x%2==1],['3의 배수',x=>x%3==0],['4의 배수',x=>x%4==0],['소수',pr],['6의 약수',x=>6%x==0]],
+ [A,B]=shuf(F).slice(0,2),and=Math.random()<.5,P=U.filter(x=>and?A[1](x)&&B[1](x):A[1](x)||B[1](x)),cc=U.filter(x=>!P.includes(x)),
+ ds=[P,U.filter(x=>and?!A[1](x)&&!B[1](x):!A[1](x)||!B[1](x)),U.filter(x=>!A[1](x)),U.filter(x=>and?A[1](x)||B[1](x):A[1](x)&&B[1](x))],seen=new Set([setS(cc)]),w=[];
+ ds.forEach(a=>{const k=setS(a);if(a.length&&!seen.has(k)){seen.add(k);w.push(k)}});
+ if(!cc.length||w.length<3)return tNegSet();
+ return mk(3,'mc',`전체집합 U={x | x는 ${N} 이하의 자연수}일 때, 조건 p: 'x는 ${A[0]}${and?'이고':'이거나'} ${B[0]}이다.'에 대하여 ~p의 진리집합은?`,[setS(cc),...w.slice(0,3)],0,`~p는 p의 진리집합의 여집합입니다. '이고'의 부정은 '또는', '이거나'의 부정은 '그리고'로 바뀝니다.`)}
+/* 템플릿 8: 명제 판별 */
+function tProp(){const a=rnd(2,9),b=rnd(2,9),n=pick([12,18,20,24,30,36]),dc=[...Array(n)].map((_,i)=>i+1).filter(i=>n%i==0).length,
+ P=[`${a}+${b}=${a+b+rnd(0,1)}`,`${n}의 약수는 ${dc+rnd(0,1)}개이다`,'모든 소수는 홀수이다','2는 짝수인 소수이다','모든 정사각형은 마름모이다','삼각형의 세 내각의 크기의 합은 180°이다'],
+ C=[`x+${a}=${a+b}`,`${a}x−${b}>${a*b}`,`x²=${a*a}`,`x는 ${n}의 약수이다`];
+ return mk(1,'mc','다음 중 명제가 아닌 것은?',[pick(C),...shuf(P).slice(0,3)],0,'참·거짓을 판별할 수 있으면 명제이고, 변수 x 때문에 참·거짓이 정해지지 않으면 명제가 아닙니다(조건). 거짓인 문장도 명제입니다.')}
+/* 템플릿 9: 반례 찾기 */
+function tCnt(){const S=rnd(0,2),y=-rnd(1,4),x=S-y+rnd(1,3),t=(a,b)=>`x=${a}, y=${b}`,o=[t(x,y),t(rnd(1,5),rnd(S+1,6)),t(-rnd(1,5),-rnd(1,5)),Math.random()<.5?t(S,0):t(0,S)];
+ if(new Set(o).size<4)return tCnt();
+ return mk(2,'mc',`x, y가 실수일 때, 명제 'x+y>${S}이면 x>0이고 y>0이다.'가 거짓임을 보이는 반례는?`,o,0,`반례는 가정(x+y>${S})은 만족하고 결론(x>0이고 y>0)은 만족하지 않는 값입니다.`)}
+/* 템플릿 10: '모든/어떤' 명제의 참·거짓 */
+function tAll(){const pl=(b,c)=>`x²${b?(b>0?'+':'−')+(Math.abs(b)==1?'':Math.abs(b))+'x':''}${c?(c>0?'+':'−')+Math.abs(c):''}`,
+ G=[(p,d)=>[`모든 실수 x에 대하여 ${p}>0이다`,d<0],(p,d)=>[`어떤 실수 x에 대하여 ${p}<0이다`,d>0],(p,d)=>[`모든 실수 x에 대하여 ${p}≥0이다`,d<=0],(p,d)=>[`어떤 실수 x에 대하여 ${p}=0이다`,d>=0]];
+ for(;;){const o=G.map(g=>{const b=2*rnd(-3,3),c=rnd(-3,9);return g(pl(b,c),b*b-4*c)});
+  if(o.filter(a=>a[1]).length==1)return mk(2,'mc','전체집합이 실수 전체일 때, 다음 중 참인 명제는?',o.map(a=>a[0]),o.findIndex(a=>a[1]),'이차식 x²+bx+c의 판별식 D=b²−4c의 부호(또는 완전제곱식)로 판단합니다.')}}
+/* 템플릿 11: 가정과 결론 */
+function tHyp(){const L=[2,3,4,6,8,9,12],a=pick(L),b=pick(L);if(a==b)return tHyp();
+ const P=`x가 ${a}의 배수이다`,Q=`x는 ${b}의 배수이다`,Pn=`x가 ${a}의 배수가 아니다`,Qn=`x는 ${b}의 배수가 아니다`,f=(p,q)=>`가정: ${p} / 결론: ${q}`;
+ return mk(1,'mc',`명제 'x가 ${a}의 배수이면 x는 ${b}의 배수이다.'의 가정과 결론을 바르게 짝지은 것은?`,[f(P,Q),f(Q,P),f(P,Qn),f(Pn,Q)],0,"'~이면'에서 앞부분이 가정, 뒷부분이 결론입니다.")}
+/* 템플릿 12: 역과 대우의 참·거짓 */
+function tConv(){const k=rnd(1,5),L=[2,3,4,6,8,9,12],a=pick(L),b=pick(L),r=rnd(0,2);let st,o,c;
+ if(r==0){if(a==b)return tConv();st=`x가 정수일 때, 'x가 ${a}의 배수이면 x는 ${b}의 배수이다.'`;o=a%b==0;c=b%a==0}
+ else if(r==1){st=`x가 실수일 때, 'x>${k}이면 x²>${k*k}이다.'`;o=true;c=false}
+ else{st=`x가 실수일 때, 'x²=${k*k}이면 x=${k}이다.'`;o=false;c=true}
+ const T=v=>v?'참':'거짓',f=(x,y)=>`역: ${T(x)}, 대우: ${T(y)}`;
+ return mk(2,'mc',`${st}의 역과 대우의 참·거짓을 순서대로 나타낸 것은?`,[f(c,o),f(!c,o),f(c,!o),f(!c,!o)],0,'대우는 원래 명제와 참·거짓이 항상 같습니다. 역은 반례를 찾아 직접 판별합니다.')}
+/* 템플릿 13: 필요조건이 되도록 하는 a의 값 */
+function tRange(){const c=rnd(-2,6),t=rnd(0,2);let q,v,w;
+ if(t==0){q=`p: x≥a, q: x>${c}`;w='최댓값';v=c}else if(t==1){q=`p: x>a, q: x≥${c}`;w='최댓값';v=c-1}else{q=`p: x≤a, q: x<${c}`;w='최솟값';v=c}
+ const o=t==2?[v,v-1,v+1,v-2]:[v,v+1,v-1,v+2];
+ return mk(3,'mc',`x가 실수이고 a가 정수일 때, ${q}에 대하여 p가 q이기 위한 필요조건이 되도록 하는 a의 ${w}은?`,o,0,'필요조건이면 q의 진리집합이 p의 진리집합의 부분집합이어야 합니다. 수직선에 그려서 경계값의 등호 포함 여부를 확인하세요.')}
+/* 템플릿 14: 절대부등식의 등호 조건 */
+function tAbs(){const p=rnd(1,3),q=rnd(1,3);if(p==q&&p>1)return tAbs();
+ const c=n=>n==1?'':n,e=(a,b,s='')=>`${c(a)}x=${s}${c(b)}y`,k=e(p,q),seen=new Set([k]),w=[];
+ [e(q,p),e(p,q,'−'),'x=y','x=−y','x=y=0일 때만','x=0 또는 y=0','x=0'].forEach(x=>{if(!seen.has(x)){seen.add(x);w.push(x)}});
+ return mk(3,'mc',`x, y가 실수일 때, 부등식 ${c(p*p)}x²+${c(q*q)}y²≥${2*p*q}xy가 성립한다. 등호가 성립하는 경우는?`,[k,...w.slice(0,3)],0,`(${c(p)}x−${c(q)}y)²≥0이므로 ${c(p)}x=${c(q)}y일 때 등호가 성립합니다.`)}
+/* 템플릿 15: 귀류법 증명 빈칸 */
+function tProof(){const p=pick([3,5,7]),o=pick([3,5,7].filter(x=>x!=p));
+ return mk(2,'mc',`√${p}이 무리수임을 귀류법으로 증명하는 과정이다.\n√${p}=n/m (m, n은 서로소인 자연수)이라 하면 n²=${p}m²이다.\nn²이 ${p}의 배수이므로 n도 ${p}의 배수이다. n=${p}k로 놓으면 m²=${p}k²이므로 m도 ${p}의 배수이다.\n즉 m, n이 모두 (가)이므로 서로소라는 가정에 모순이다.\n(가)에 알맞은 것은?`,[`${p}의 배수`,`${p}의 약수`,'짝수',`${o}의 배수`],0,`m, n이 모두 ${p}의 배수이면 ${p}이 공약수가 되어 서로소가 아닙니다.`)}
+tCond.h=tNeg.h=tLogic.h=tComb.h=tNegSet.h=tAll.h=tConv.h=tRange.h=tAbs.h=tProof.h=1;
+tLogic.d3=tComb.d3=tNegSet.d3=tRange.d3=tAbs.d3=1;
+const TP={p:[tSet,tSet2,tNegSet,tProp,tCnt,tAll,tHyp,tConv,tCond,tRange,tAbs,tProof,tNeg,tLogic,tComb]};
 
 function pickQ(){const m=G.mode,tp=TP[UNIT]||[];
- if(tp.length&&(!B.length||Math.random()<(m=='time'?.7:.5))){const pl=m=='boss'?tp.filter(f=>f.h):tp;let c=pl.filter(f=>!G.lt.includes(f));if(!c.length)c=pl;const f=pick(c);G.lt=[f,...G.lt].slice(0,2);return f()}
+ if(tp.length&&(!B.length||Math.random()<(m=='time'?.7:.5))){let pl=m=='boss'?tp.filter(f=>f.h):tp;if(m=='boss'&&G.correct>=4)pl=pl.filter(f=>f.d3);let c=pl.filter(f=>!G.lt.includes(f));if(!c.length)c=pl;const f=pick(c);G.lt=[f,...G.lt].slice(0,2);const q=f();q.tn=f.name;return q}
  const all=B.map((x,i)=>i).filter(i=>m!='boss'||B[i][0]>1);
  let p=all.filter(i=>!G.used.has(i));if(!p.length){G.used.clear();p=all.length?all:B.map((x,i)=>i)}
  const i=pick(p);G.used.add(i);return mk(...B[i])}
@@ -140,25 +193,25 @@ function modes(){const u=UN.find(x=>x.id==UNIT);R(`<div class="hero">${u.e}</div
 function start(mode){
  clearInterval(G&&G.iv);
  B=QS[UNIT]||[];G={lt:[],mode,score:0,streak:0,correct:0,total:0,lives:3,lv:1,used:new Set(),wrong:[],end:Date.now()+(M[mode].time||0)*1000};
- if(mode=='time')G.iv=setInterval(tick,250);
+ if(mode=='time'||mode=='boss')G.iv=setInterval(tick,250);
  next()}
 function stat(){const m=G.mode;if(m=='time')return Math.max(0,Math.ceil((G.end-Date.now())/1000))+'초';
- if(m=='boss')return '❤️'.repeat(Math.max(0,G.lives))+` 클리어 ${G.correct}/5`;
+ if(m=='boss')return Math.max(0,Math.ceil((G.qend-Date.now())/1000))+'초 · '+'❤️'.repeat(Math.max(0,G.lives))+` 클리어 ${G.correct}/5`;
  if(m=='chal')return `Lv.${G.lv} · ${G.streak}/10`;return `${G.correct}/${G.total}`}
 function setPg(){const m=G.mode,e=document.getElementById('pg');if(!e)return;
- const p=m=='time'?(G.end-Date.now())/(M.time.time*10):m=='boss'?G.correct*20:m=='chal'?G.streak*10:0;e.style.width=Math.max(0,Math.min(100,p))+'%'}
-function tick(){if(G.fin)return;const s=document.getElementById('st');if(s)s.textContent=stat();setPg();if(Date.now()>=G.end)finish()}
-function next(){if(G.fin)return;G.q=pickQ();G.lock=false;G.done=false;const q=G.q;
+ const p=m=='time'?(G.end-Date.now())/(M.time.time*10):m=='boss'?(G.qend-Date.now())/(G.qt*10):m=='chal'?G.streak*10:0;e.style.width=Math.max(0,Math.min(100,p))+'%'}
+function tick(){if(G.fin)return;const s=document.getElementById('st');if(s)s.textContent=stat();setPg();if(G.mode=='time'&&Date.now()>=G.end)finish();if(G.mode=='boss'&&!G.lock&&Date.now()>=G.qend)ans(-1)}
+function next(){if(G.fin)return;G.q=pickQ();G.lock=false;G.done=false;const q=G.q;if(G.mode=='boss'){G.qt=q.d==3?50:30;G.qend=Date.now()+G.qt*1000}
  R(`<div class="bar"><span>${M[G.mode].e} ${M[G.mode].n}</span><span>점수 <b id="sc">${G.score}</b></span></div>
 <div class="bar s"><span id="cb">${G.streak>1?'🔥 '+G.streak+'연속':''}</span><span id="st">${stat()}</span></div>
 <div class="pg"><i id="pg"></i></div>
-<div class="card"><div class="s">${['','쉬움','보통','어려움'][q.d]}</div><div style="font-size:19px;font-weight:700;white-space:pre-line">${esc(q.q)}</div></div>
+<div class="card"><div class="s">${['','쉬움','보통','어려움'][q.d]}${location.hash=='#debug'?' · '+(q.tn||'엑셀'):''}</div><div style="font-size:19px;font-weight:700;white-space:pre-line">${esc(q.q)}</div></div>
 ${q.ch.map((c,i)=>`<button class="b g" data-a="ans" data-v="${i}">${q.t=='ox'?'':'①②③④'[i]+' '}${esc(c)}</button>`).join('')}
 <div id="fb"></div><button class="b g" data-a="quit" style="margin-top:24px">그만하기</button>`);setPg()}
 function ans(i){
  if(G.lock||G.fin)return;G.lock=true;const q=G.q,ok=i==q.ans,bs=A.querySelectorAll('[data-a=ans]');G.total++;
- bs[i].classList.add(ok?'ok':'bad');if(!ok)bs[q.ans].classList.add('ok');
- let msg=ok?'🎉 정답!':'🥲 오답 · 정답은 '+q.ch[q.ans];
+ if(bs[i])bs[i].classList.add(ok?'ok':'bad');if(!ok)bs[q.ans].classList.add('ok');
+ let msg=ok?'🎉 정답!':(i<0?'⏰ 시간 초과 · 정답은 ':'🥲 오답 · 정답은 ')+q.ch[q.ans];
  if(ok){G.correct++;G.streak++;G.score+=100+({3:50,5:100,10:300}[G.streak]||0)}
  else{G.streak=0;G.wrong.push(q);if(G.mode=='boss')G.lives--}
  if(G.mode=='chal'&&G.streak>=10){G.lv++;G.streak=0;msg='레벨 업! Lv.'+G.lv}
