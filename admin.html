@@ -1,5 +1,9 @@
-<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>교사용 · 수학 챌린지</title><script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<style>*{box-sizing:border-box}body{margin:0;background:#f3f5fa;color:#1f2540;font:16px/1.5 system-ui,'Noto Sans KR',sans-serif;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}.w{max-width:760px;margin:0 auto;padding:20px 16px 40px}.c{background:#fff;border:1px solid #d9deee;border-radius:12px;padding:16px;margin:12px 0}input{width:100%;font:inherit;padding:12px;border:1px solid #c5cce2;border-radius:8px;margin:6px 0 12px}button{font:inherit;padding:10px 14px;border-radius:8px;border:1px solid #c5cce2;background:#fff;cursor:pointer;margin:4px 6px 4px 0}button.p{background:#3b4fd6;color:#fff;border-color:#3b4fd6}table{width:100%;border-collapse:collapse}td,th{padding:8px;border-bottom:1px solid #e6e9f5;text-align:left}.r{overflow-x:auto}.s{color:#5b6585;font-size:14px}</style></head>
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>교사용 · 수학 챌린지</title><script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script><script defer src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>*{box-sizing:border-box}body{margin:0;background:#f3f5fa;color:#1f2540;font:16px/1.5 system-ui,'Noto Sans KR',sans-serif;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}.w{max-width:1100px;margin:0 auto;padding:20px 16px 40px}.c{background:#fff;border:1px solid #d9deee;border-radius:12px;padding:16px;margin:12px 0}input{width:100%;font:inherit;padding:12px;border:1px solid #c5cce2;border-radius:8px;margin:6px 0 12px}button{font:inherit;padding:10px 14px;border-radius:8px;border:1px solid #c5cce2;background:#fff;cursor:pointer;margin:4px 6px 4px 0}button.p{background:#3b4fd6;color:#fff;border-color:#3b4fd6}table{width:100%;border-collapse:collapse}td,th{padding:8px;border-bottom:1px solid #e6e9f5;text-align:left}.r{overflow-x:auto}.s{color:#5b6585;font-size:14px}.nv{display:flex;gap:8px;margin:8px 0 12px}.nv button.p{background:#3b4fd6;color:#fff;border-color:#3b4fd6}.fl2{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0}.fl2 select,#so{font:inherit;padding:8px;border-radius:8px;border:1px solid #c5cce2}
+.cd{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}.k{background:#fff;border:1px solid #d9deee;border-radius:12px;padding:14px;text-align:center;color:#5b6585}.k b{display:block;font-size:30px;color:#1f2540}
+.gr{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:12px}.gr .c{margin:0}.gr canvas,#dt canvas{max-height:280px}
+.ht td{width:34px;height:28px;text-align:center;font-size:11px;padding:0;border:1px solid #fff}.ht th{font-size:11px;font-weight:400;padding:2px 6px;white-space:nowrap}.ht th.v div{writing-mode:vertical-rl;max-height:170px;margin:auto}
+tr[data-s]{cursor:pointer}tr[data-s]:hover{background:#eef1fb}</style></head>
 <body><div class="w" id="app"></div>
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
@@ -14,10 +18,10 @@ function login(m=''){A.innerHTML=`<h1>🍎 교사용 관리</h1><div class="c"><
 async function board(m=''){A.innerHTML='<h1>🍎 교사용 관리</h1><p>불러오는 중…</p>';let rows=[];
  try{rows=(await getDocs(collection(db,'rank'))).docs.map(d=>({id:d.id,...d.data()}))}catch(e){m='불러오기 실패 ('+(e.code||e)+')'}
  rows.sort((a,b)=>a.unit>b.unit?1:a.unit<b.unit?-1:b.score-a.score);
- A.innerHTML=`<h1>🍎 교사용 관리</h1><p class="s">${m}</p><div class="c"><b>랭킹 (학번별 최고 점수, 총 ${rows.length}명)</b><div class="r"><table><tr><th>순위</th><th>단원</th><th>학번</th><th>점수</th><th>정답</th><th>기록 시각</th><th></th></tr>${rows.map((r,i)=>`<tr><td>${i+1}</td><td>${{p:'명제',f:'함수',r:'유리·무리'}[r.unit]||r.unit}</td><td>${esc(r.sid)}</td><td>${r.score}</td><td>${r.n}</td><td>${new Date(r.t).toLocaleString('ko-KR')}</td><td><button data-d="${esc(r.id)}">삭제</button></td></tr>`).join('')}</table></div></div>
+ A.innerHTML=`${NAV('b')}<p class="s">${m}</p><div class="c"><b>랭킹 (학번별 최고 점수, 총 ${rows.length}명)</b><div class="r"><table><tr><th>순위</th><th>단원</th><th>학번</th><th>점수</th><th>정답</th><th>기록 시각</th><th></th></tr>${rows.map((r,i)=>`<tr><td>${i+1}</td><td>${{p:'명제',f:'함수',r:'유리·무리'}[r.unit]||r.unit}</td><td>${esc(r.sid)}</td><td>${r.score}</td><td>${r.n}</td><td>${new Date(r.t).toLocaleString('ko-KR')}</td><td><button data-d="${esc(r.id)}">삭제</button></td></tr>`).join('')}</table></div></div>
 <button id="rf">새로고침</button><button id="rs">랭킹 전체 초기화</button><button id="lo">로그아웃</button><button id="ck0">문제 파일 검수</button><div id="ck" class="c s" style="white-space:pre-line;display:none"></div>
 <div class="c s"><b>비밀번호를 잊은 학생</b><br>Firebase 콘솔 > Authentication > 사용자에서 <code>학번@mj-student.example.com</code> 계정을 삭제하면, 학생이 같은 학번으로 다시 입장해 새 비밀번호를 정할 수 있어요. 기록은 위 표에서 학번 기준으로 남아 있거나 삭제할 수 있어요.</div>`;
- $('rf').onclick=()=>board();
+ $('rf').onclick=()=>board();bindNav();
  $('ck0').onclick=async()=>{const o=$('ck');o.style.display='block';o.textContent='검사 중…';
   try{const wb=XLSX.read(await(await fetch('questions.xlsx?v='+Date.now())).arrayBuffer()),out=[];
    for(const n of wb.SheetNames){if(n=='사용법'||n=='입력도우미')continue;let ok=0;
@@ -30,5 +34,45 @@ async function board(m=''){A.innerHTML='<h1>🍎 교사용 관리</h1><p>불러�
  $('rs').onclick=async e=>{if(!e.target.dataset.c){e.target.dataset.c=1;e.target.textContent='한 번 더 누르면 전부 삭제됩니다';return}
   try{await Promise.all(rows.map(r=>deleteDoc(doc(db,'rank',r.id))))}catch(x){}board('초기화했어요.')};
  A.querySelectorAll('[data-d]').forEach(b=>b.onclick=async()=>{try{await deleteDoc(doc(db,'rank',b.dataset.d))}catch(x){}board()})}
-onAuthStateChanged(au,u=>{if(!u)login();else if(/^\d{5}@/.test(u.email||'')){login('학생 계정으로 로그인된 상태예요. 교사 계정으로 로그인해 주세요.')}else board()});
+/* ---- 학생 현황 대시보드 ---- */
+const NAV=c=>`<h1>🍎 교사용 관리</h1><div class="nv"><button class="${c=='d'?'p':''}" data-n="d">📊 학생 현황</button><button class="${c=='b'?'p':''}" data-n="b">🏆 랭킹·관리</button></div>`;
+const bindNav=()=>A.querySelectorAll('[data-n]').forEach(b=>b.onclick=()=>b.dataset.n=='d'?dash():board());
+const TYN={tSet:'진리집합 구하기',tSet2:'조건 고르기',tNegSet:'부정과 진리집합',tProp:'명제 판별',tCnt:'반례 찾기',tAll:"'모든/어떤' 참·거짓",tHyp:'가정과 결론',tConv:'역·대우 참거짓',tCond:'충분·필요조건',tRange:'범위 구하기',tAbs:'절대부등식 등호',tProof:'귀류법 증명',tNeg:"'모든/어떤' 부정",tLogic:'대우 추론',tComb:'보기 조합형'},UNM={p:'명제',f:'함수',r:'유리·무리'};
+const tn=k=>{const i=k.indexOf('.'),u=k.slice(0,i),t=k.slice(i+1);return (UNM[u]||u)+' · '+(TYN[t]||t.replace('엑셀:','문제은행 '))};
+const cls=s=>s.slice(0,3),cn=c=>`${c[0]}학년 ${+c.slice(1)}반`,pc=(c,n)=>n?Math.round(c/n*100):null,cl=p=>p==null?'#e5e7ef':`hsl(${Math.round(p*1.2)},62%,60%)`,bc=p=>p<50?'#ef6a6a':p<70?'#f5a742':'#4cc38a';
+const dk=n=>[...Array(n)].map((_,i)=>{const d=new Date();d.setDate(d.getDate()-(n-1-i));return d.toLocaleDateString('sv')});
+const tyOf=u=>(u.cn&&u.cn.ty)||{},ddOf=u=>(u.cn&&u.cn.dd)||{};
+let U=[],CH=[],CL='',SO='sid';
+async function dash(){A.innerHTML=NAV('d')+'<p>불러오는 중…</p>';bindNav();
+ try{U=(await getDocs(collection(db,'users'))).docs.map(d=>d.data())}catch(e){A.innerHTML=NAV('d')+'<p class="s">불러오기 실패 ('+(e.code||e)+')</p>';bindNav();return}draw()}
+function draw(){CH.forEach(c=>c.destroy());CH=[];
+ const cs=[...new Set(U.map(u=>cls(u.sid)))].sort(),us=U.filter(u=>!CL||cls(u.sid)==CL),days=dk(14),w7=days.slice(7),T=days[13],
+ d7=u=>w7.reduce((a,k)=>a+(ddOf(u)[k]||0),0),acc=u=>pc(u.correct,u.solved),cur=u=>u.sd==T||u.sd==days[12]?u.sn:0,
+ spd=u=>{let n=0,t=0;const y=tyOf(u);for(const k in y){n+=y[k].n;t+=y[k].t}return n?(t/n/1000).toFixed(1):'-'},
+ weak=u=>Object.entries(tyOf(u)).filter(e=>e[1].n>=3).sort((a,b)=>a[1].c/a[1].n-b[1].c/b[1].n).slice(0,3).map(e=>tn(e[0])+' '+pc(e[1].c,e[1].n)+'%').join(', ')||'-',
+ lvl=u=>Math.floor(Math.sqrt((u.xp||0)/60))+1;
+ const act=us.filter(u=>d7(u)>0).length,sC=us.reduce((a,u)=>a+u.correct,0),sN=us.reduce((a,u)=>a+u.solved,0),tdN=us.reduce((a,u)=>a+(ddOf(u)[T]||0),0);
+ const ag={};us.forEach(u=>{const y=tyOf(u);for(const k in y){const o=ag[k]||(ag[k]={n:0,c:0,t:0});o.n+=y[k].n;o.c+=y[k].c;o.t+=y[k].t}});
+ const hard=Object.entries(ag).filter(e=>e[1].n>=10).map(e=>[e[0],pc(e[1].c,e[1].n),(e[1].t/e[1].n/1000).toFixed(1),e[1].n]).sort((a,b)=>a[1]-b[1]).slice(0,12),hk=Object.keys(ag).filter(k=>ag[k].n>=10).sort();
+ const heat='<table class="ht"><tr><th></th>'+hk.map(k=>`<th class="v"><div>${esc(tn(k))}</div></th>`).join('')+'</tr>'+us.map(u=>`<tr><th>${esc(u.sid)}</th>${hk.map(k=>{const o=tyOf(u)[k],p=o&&o.n>=3?pc(o.c,o.n):null;return `<td style="background:${cl(p)}" title="${o?o.c+'/'+o.n+' · 평균 '+(o.t/o.n/1000).toFixed(1)+'초':'기록 없음'}">${p==null?'':p}</td>`}).join('')}</tr>`).join('')+'</table>';
+ const last=u=>(u.cn&&u.cn.la)||'-',srt={sid:(a,b)=>a.sid>b.sid?1:-1,acc:(a,b)=>(acc(a)??101)-(acc(b)??101),w7:(a,b)=>d7(a)-d7(b),last:(a,b)=>last(a)>last(b)?1:-1},rows=[...us].sort(srt[SO]);
+ A.innerHTML=NAV('d')+`<div class="fl2"><label>반 <select id="fc"><option value="">전체</option>${cs.map(c=>`<option value="${c}"${c==CL?' selected':''}>${cn(c)}</option>`).join('')}</select></label><button id="rf2">새로고침</button><button id="csv">CSV 저장</button><button id="lo2">로그아웃</button></div>
+<div class="cd"><div class="k"><b>${us.length}</b>참여 학생</div><div class="k"><b>${act}</b>최근 7일 활동</div><div class="k"><b>${sN?pc(sC,sN)+'%':'-'}</b>평균 정답률</div><div class="k"><b>${tdN}</b>오늘 푼 문제</div></div>
+<div class="gr" style="margin-top:12px"><div class="c"><b>일별 풀이 수 (14일)</b><canvas id="g1"></canvas></div><div class="c"><b>단원별 정답률</b><canvas id="g2"></canvas></div><div class="c"><b>학생 수준 분포</b><canvas id="g3"></canvas></div><div class="c"><b>어려운 유형 순위 (정답률 낮은 순)</b>${hard.length?'<canvas id="g4"></canvas>':'<p class="s">유형별 기록이 쌓이면 표시돼요 (유형당 10문제 이상).</p>'}</div></div>
+<div class="c"><b>학생 × 유형 정답률</b> <span class="s">(붉을수록 약함 · 회색은 자료 부족)</span><div class="r">${hk.length?heat:'<p class="s">유형별 기록이 쌓이면 표시돼요.</p>'}</div></div>
+<div class="c"><b>학생 표</b> <label class="s">정렬 <select id="so"><option value="sid">학번순</option><option value="acc"${SO=='acc'?' selected':''}>정답률 낮은 순</option><option value="w7"${SO=='w7'?' selected':''}>최근 7일 풀이 적은 순</option><option value="last"${SO=='last'?' selected':''}>최근 풀이 오래된 순</option></select></label><div class="r"><table><tr><th>학번</th><th>Lv</th><th>총 풀이</th><th>7일</th><th>정답률</th><th>평균 속도</th><th>스트릭</th><th>최근 풀이</th><th>약한 유형</th></tr>${rows.map(u=>`<tr data-s="${esc(u.sid)}"><td>${esc(u.sid)}</td><td>${lvl(u)}</td><td>${u.solved}</td><td>${d7(u)}</td><td>${acc(u)==null?'-':acc(u)+'%'}</td><td>${spd(u)}초</td><td>${cur(u)}일</td><td>${last(u)}</td><td>${esc(weak(u))}</td></tr>`).join('')}</table></div><p class="s">학생을 누르면 아래에 상세가 나와요. 평균 속도는 문제당 걸린 시간이에요.</p></div><div class="c" id="dt" style="display:none"></div>`;
+ const mkc=(id,cfg)=>{const e=$(id);if(e)CH.push(new Chart(e,cfg))};
+ mkc('g1',{type:'bar',data:{labels:days.map(k=>k.slice(5)),datasets:[{data:days.map(k=>us.reduce((a,u)=>a+(ddOf(u)[k]||0),0)),backgroundColor:'#8f7cf5'}]},options:{plugins:{legend:{display:false}}}});
+ mkc('g2',{type:'bar',data:{labels:['명제','함수','유리·무리'],datasets:[{data:['p','f','r'].map(x=>pc(us.reduce((a,u)=>a+((u.us&&u.us[x])?u.us[x].c:0),0),us.reduce((a,u)=>a+((u.us&&u.us[x])?u.us[x].n:0),0))||0),backgroundColor:['#8f7cf5','#59b9f0','#f5a742']}]},options:{scales:{y:{min:0,max:100}},plugins:{legend:{display:false}}}});
+ const bd=[0,0,0,0,0];us.forEach(u=>{if(u.solved<10)bd[0]++;else{const p=acc(u);bd[p<50?1:p<70?2:p<90?3:4]++}});
+ mkc('g3',{type:'doughnut',data:{labels:['자료 부족(10문제 미만)','50% 미만','50~69%','70~89%','90% 이상'],datasets:[{data:bd,backgroundColor:['#cfd3e2','#ef6a6a','#f5a742','#7fc97f','#4cc38a']}]}});
+ mkc('g4',{type:'bar',data:{labels:hard.map(h=>tn(h[0])),datasets:[{data:hard.map(h=>h[1]),backgroundColor:hard.map(h=>bc(h[1]))}]},options:{indexAxis:'y',scales:{x:{min:0,max:100}},plugins:{legend:{display:false},tooltip:{callbacks:{afterLabel:c=>`풀이 ${hard[c.dataIndex][3]}회 · 평균 ${hard[c.dataIndex][2]}초`}}}}});
+ bindNav();$('fc').onchange=e=>{CL=e.target.value;draw()};$('so').onchange=e=>{SO=e.target.value;draw()};$('rf2').onclick=dash;$('lo2').onclick=()=>signOut(au);
+ $('csv').onclick=()=>{const h=['학번','Lv','총 풀이','7일 풀이','정답률(%)','평균 속도(초)','스트릭','최근 풀이','약한 유형'],b=rows.map(u=>[u.sid,lvl(u),u.solved,d7(u),acc(u)??'',spd(u),cur(u),last(u),weak(u)].map(x=>'"'+String(x).replace(/"/g,'""')+'"').join(','));
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\uFEFF'+[h.join(','),...b].join('\n')],{type:'text/csv'}));a.download='학생현황.csv';a.click()};
+ A.querySelectorAll('[data-s]').forEach(r=>r.onclick=()=>detail(r.dataset.s))}
+function detail(sid){const u=U.find(x=>x.sid==sid),el=$('dt');if(!u)return;const t=Object.entries(tyOf(u)).filter(e=>e[1].n>=3);
+ el.style.display='block';el.innerHTML=`<b>학생 ${esc(sid)} 상세</b><p class="s">Lv.${Math.floor(Math.sqrt((u.xp||0)/60))+1} · 총 ${u.solved}문제 · 정답률 ${pc(u.correct,u.solved)??'-'}% · 최고 연속 ${u.mx||0} · 업적 ${Object.keys(u.ach||{}).length}개</p>${t.length?'<canvas id="g5"></canvas>':'<p class="s">유형별 기록이 아직 부족해요 (유형당 3문제 이상).</p>'}`;
+ if(t.length)CH.push(new Chart($('g5'),{type:t.length>=3?'radar':'bar',data:{labels:t.map(e=>tn(e[0])),datasets:[{label:'정답률(%)',data:t.map(e=>pc(e[1].c,e[1].n)),backgroundColor:'rgba(143,124,245,.35)',borderColor:'#6a5ae0'}]},options:{scales:t.length>=3?{r:{min:0,max:100}}:{y:{min:0,max:100}}}}));el.scrollIntoView&&el.scrollIntoView({behavior:'smooth'})}
+onAuthStateChanged(au,u=>{if(!u)login();else if(/^\d{5}@/.test(u.email||'')){login('학생 계정으로 로그인된 상태예요. 교사 계정으로 로그인해 주세요.')}else dash()});
 </script></body></html>
