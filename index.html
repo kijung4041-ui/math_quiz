@@ -42,6 +42,7 @@ input:focus,button:focus-visible{outline:3px solid var(--pri);outline-offset:2px
 [data-theme=dark] .m.time{background:#4a2740}[data-theme=dark] .m.free{background:#1f4a3a}[data-theme=dark] .m.p{background:#3a2f6e}[data-theme=dark] .m.f{background:#1f4560}[data-theme=dark] .m.r{background:#5a3a28}
 [data-theme=dark] .b.ok{background:#1f6b45;border-color:#3ecf8e;color:#fff}[data-theme=dark] .b.bad{background:#7a2b2b;border-color:#ff7a7a;color:#fff}
 [data-theme=dark] .row.me{background:#2a2a55}[data-theme=dark] .fl{background:rgba(31,35,64,.95)}
+.fl.mn{color:#e5484d;font-size:26px;text-shadow:none}
 .goal{display:flex;gap:6px;margin-top:8px}.gb{flex:1;font:inherit;padding:8px;border-radius:10px;border:2px solid var(--line);background:#fff;color:var(--ink);cursor:pointer}.gb.on{background:var(--pri);color:#fff;border-color:var(--pri)}
 .b:disabled{opacity:.5;cursor:not-allowed}.m.p{background:#e0d4ff}.m.f{background:#d3f0ff}.m.r{background:#ffe3cf}
 .grid{display:grid;gap:0 12px}
@@ -231,7 +232,8 @@ function tone(f,t,d,v=.15,ty='sine'){if(!SET.snd)return;try{AX=AX||new(window.Au
 const snd=k=>k=='ok'?(tone(660,0,.12),tone(880,.08,.18)):k=='bad'?tone(180,0,.25,.12,'sawtooth'):[523,659,784,1047].forEach((f,i)=>tone(f,i*.07,.16));
 function burst(el){if(!el||!document.createElement)return;const r=el.getBoundingClientRect?el.getBoundingClientRect():{left:200,top:300,width:0,height:0};
  for(let i=0;i<14;i++){const p=document.createElement('i'),a=Math.random()*6.28,d=40+Math.random()*60;p.className='cf';p.style.cssText=`left:${r.left+r.width/2}px;top:${r.top+r.height/2}px;--x:${Math.cos(a)*d}px;--y:${Math.sin(a)*d}px;background:${pick(['#4cc38a','#7bdc9d','#b7f0c8','#ffd54f'])}`;document.body.appendChild(p);setTimeout(()=>p.remove(),700)}}
-function flame(n){if(!document.createElement)return;const p=document.createElement('div');p.className='fl';p.textContent=`🔥 ${n}연속 콤보! +${{3:50,5:100,10:300}[n]||0}`;document.body.appendChild(p);snd('combo');setTimeout(()=>p.remove(),950)}
+function flame(n){if(!document.createElement)return;const p=document.createElement('div');p.className='fl';p.textContent=`🔥 ${n}연속 콤보! +${{3:250,5:500,10:1500}[n]||0}`;document.body.appendChild(p);snd('combo');setTimeout(()=>p.remove(),950)}
+function minus(n){if(!document.createElement)return;const p=document.createElement('div');p.className='fl mn';p.textContent='−'+n+'점';document.body.appendChild(p);setTimeout(()=>p.remove(),950)}
 const ago=n=>{const d=new Date();d.setDate(d.getDate()-n);return d.toLocaleDateString('sv')};
 async function stats(){R('<h1>📊 내 기록</h1><p class="sub">불러오는 중…</p>');
  const dd=UD.cn.dd||{},wk=Object.keys(dd).filter(k=>k>=ago(6)).reduce((a,k)=>a+dd[k],0),best={};
@@ -283,16 +285,16 @@ ${q.ch.map((c,i)=>`<button class="b g" data-a="ans" data-v="${i}">${q.t=='ox'?''
 function ans(i){
  if(G.lock||G.fin)return;G.lock=true;const q=G.q,ok=i==q.ans,bs=A.querySelectorAll('[data-a=ans]');G.total++;
  if(bs[i])bs[i].classList.add(ok?'ok':'bad');if(!ok)bs[q.ans].classList.add('ok');
- let msg=ok?'🎉 '+pick(['훌륭해요!','좋아요!','잘했어요!','완벽해요!']):(i<0?'⏰ 시간 초과! ':'🥲 '+pick(['괜찮아요, 다음엔 맞힐 수 있어요!','아쉬워요, 정답을 확인해요!','실수는 성장의 지름길!'])+' ')+'정답은 '+q.ch[q.ans];
- track(ok,q);if(ok){G.correct++;G.streak++;G.score+=100+({3:50,5:100,10:300}[G.streak]||0)}
- else{G.streak=0;G.wrong.push(q);if(G.mode=='boss')G.lives--}
+ let msg=ok?'🎉 '+pick(['훌륭해요!','좋아요!','잘했어요!','완벽해요!']):(i<0?'⏰ 시간 초과! ':'🥲 '+pick(['괜찮아요, 다음엔 맞힐 수 있어요!','아쉬워요, 정답을 확인해요!','실수는 성장의 지름길!'])+' ')+'정답은 '+q.ch[q.ans]+(!ok&&G.mode=='time'&&G.score>0?' · −'+Math.min(G.score,150)+'점':'');
+ track(ok,q);if(ok){G.correct++;G.streak++;G.score+=500+({3:250,5:500,10:1500}[G.streak]||0)}
+ else{G.streak=0;G.wrong.push(q);if(G.mode=='boss')G.lives--;if(G.mode=='time'){const l=Math.min(G.score,150);G.score-=l;if(l)minus(l)}}
  if(G.mode=='chal'&&G.streak>=10){G.lv++;G.streak=0;msg='레벨 업! Lv.'+G.lv}
  const m=G.mode;G.done=(m=='boss'&&(G.correct>=5||G.lives<=0));
  if(ok){burst(bs[i]);snd('ok');if([3,5,10].includes(G.streak))flame(G.streak)}else snd('bad');
  document.getElementById('sc').textContent=G.score;
  document.getElementById('cb').innerHTML=G.streak>1?`<span class="pop">🔥 ${G.streak}연속</span>`:'';
  document.getElementById('st').textContent=stat();setPg();
- if(m=='time'){setTimeout(next,ok?350:900);document.getElementById('fb').innerHTML=`<p><b>${esc(msg)}</b></p>`}
+ if(m=='time'){setTimeout(next,ok?350:3000);document.getElementById('fb').innerHTML=ok?`<p><b>${esc(msg)}</b></p>`:`<div class="card"><b>${esc(msg)}</b><br><span class="s">${esc(q.ex)}</span><div class="pg" style="margin-top:10px"><i id="wb" style="width:100%;transition:width 3s linear;background:#ef6a6a"></i></div></div>`;if(!ok)setTimeout(()=>{const w=document.getElementById('wb');if(w)w.style.width='0'},30)}
  else document.getElementById('fb').innerHTML=`<div class="card"><b>${esc(msg)}</b><br><span class="s">${esc(q.ex)}</span></div><button class="b" data-a="nx">${G.done?'결과 보기':'다음 문제'}</button>`}
 async function save(){
  const r={sid:name,unit:UNIT,score:G.score,n:G.correct,t:Date.now()},l=LS.g('mj_sc',[]);l.push(r);LS.s('mj_sc',l.slice(-200));
