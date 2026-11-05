@@ -33,3 +33,307 @@ input:focus,button:focus-visible{outline:3px solid var(--pri);outline-offset:2px
 @keyframes cf{to{transform:translate(var(--x),var(--y)) scale(.3);opacity:0}}
 .fl{position:fixed;left:50%;top:28%;transform:translateX(-50%);z-index:60;pointer-events:none;font-size:30px;font-weight:900;color:#ff7a1a;text-shadow:0 2px 10px rgba(255,140,0,.45);background:rgba(255,255,255,.92);padding:8px 20px;border-radius:99px;animation:fl .95s ease-out forwards;white-space:nowrap}
 @keyframes fl{0%{opacity:0;transform:translateX(-50%) scale(.6)}25%{opacity:1;transform:translateX(-50%) scale(1.15)}100%{opacity:0;transform:translateX(-50%) translateY(-40px) scale(1)}}
+@media(prefers-reduced-motion:reduce){.cf{display:none}.fl{animation:none;opacity:1}}
+:root[data-theme=dark]{--card:#1f2340;--ink:#ecebff;--sub:#a9a7cf;--pri:#9a8cff;--on:#16142e;--line:#363b66;color-scheme:dark}
+[data-theme=dark] body{background:linear-gradient(180deg,#14122b,#101c33) fixed}
+[data-theme=dark] input{background:#171a33}
+[data-theme=dark] .b.g,[data-theme=dark] .gb{background:var(--card);color:var(--ink)}
+[data-theme=dark] .gb.on{background:var(--pri);color:var(--on)}
+[data-theme=dark] .m.time{background:#4a2740}[data-theme=dark] .m.free{background:#1f4a3a}[data-theme=dark] .m.p{background:#3a2f6e}[data-theme=dark] .m.f{background:#1f4560}[data-theme=dark] .m.r{background:#5a3a28}
+[data-theme=dark] .b.ok{background:#1f6b45;border-color:#3ecf8e;color:#fff}[data-theme=dark] .b.bad{background:#7a2b2b;border-color:#ff7a7a;color:#fff}
+[data-theme=dark] .row.me{background:#2a2a55}[data-theme=dark] .fl{background:rgba(31,35,64,.95)}
+.fl.mn{color:#e5484d;font-size:26px;text-shadow:none}
+.goal{display:flex;gap:6px;margin-top:8px}.gb{flex:1;font:inherit;padding:8px;border-radius:10px;border:2px solid var(--line);background:#fff;color:var(--ink);cursor:pointer}.gb.on{background:var(--pri);color:#fff;border-color:var(--pri)}
+.b:disabled{opacity:.5;cursor:not-allowed}.m.p{background:#e0d4ff}.m.f{background:#d3f0ff}.m.r{background:#ffe3cf}
+.grid{display:grid;gap:0 12px}
+@media(min-width:600px){.grid{grid-template-columns:1fr 1fr}}
+.bar{display:flex;justify-content:space-between;align-items:center;font-weight:700;margin:4px 0}
+.pg{height:10px;background:var(--line);border-radius:99px;overflow:hidden;margin:8px 0}
+.pg i{display:block;height:100%;width:0;background:#8f7cf5;transition:width .25s}
+.row{display:flex;gap:12px;align-items:center;padding:12px 16px}
+.row b{width:36px;font-size:22px}.row span:nth-child(2){flex:1;font-weight:700}
+.row.me{border-color:var(--pri);background:#f1edff}
+.pop{display:inline-block;animation:pop .35s}
+@keyframes pop{50%{transform:scale(1.3)}}
+@media(prefers-reduced-motion:reduce){.pop{animation:none}.pg i{transition:none}}
+</style></head>
+<body><div id="app"></div>
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import {getFirestore,collection,getDocs,doc,getDoc,setDoc,query,where} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import {getAuth,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+/* ▼ Firebase 콘솔 > 프로젝트 설정 > 내 앱(웹)에서 복사한 값으로 교체 */
+const cfg={apiKey:"AIzaSyBlhgDlqHh2zzyqwsyJ0WQGQXNIUttrtkc",authDomain:"math-quiz-bb8ad.firebaseapp.com",projectId:"math-quiz-bb8ad",appId:"1:631904496083:web:ba0846c537c7c824762726"};
+const FB=cfg.apiKey!=="YOUR_API_KEY";let db=null,au=null;
+if(FB){const app=initializeApp(cfg);au=getAuth(app);db=getFirestore(app)}
+const A=document.getElementById('app');
+const rnd=(a,b)=>a+Math.floor(Math.random()*(b-a+1)),pick=a=>a[rnd(0,a.length-1)];
+const shuf=a=>a.map(v=>[Math.random(),v]).sort((x,y)=>x[0]-y[0]).map(x=>x[1]);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const LS={g(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v==null?d:v}catch(e){return d}},s(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const R=h=>{A.innerHTML='<div class="w">'+h+'</div>';if(window.renderMathInElement)renderMathInElement(A,{delimiters:[{left:'$',right:'$',display:false}],throwOnError:false})};
+let name='',G=null,ERR='';
+const M={time:{e:'⏱️',n:'타임어택',d:'180초 안에 최대한 많이! 랭킹 기록',time:180},free:{e:'♾️',n:'무한 연습',d:'시간 제한 없이 · 해설 확인'},chal:{e:'🔥',n:'챌린지',d:'10문제 연속 정답이면 레벨업'},boss:{e:'👾',n:'보스전',d:'어려운 문제 5개 · 목숨 3개'}};
+
+/* 단원과 문제 파일(questions.xlsx) */
+const UN=[{id:'p',sheet:'명제',n:'명제',e:'🧩',d:'집합과 명제'},{id:'f',sheet:'함수',n:'함수',e:'📈',d:'함수와 그래프'},{id:'r',sheet:'유리함수와무리함수',n:'유리함수·무리함수',e:'🌀',d:'유리함수와 무리함수'}];
+let B=[],QS={},LOADERR='',UNIT='p',MODE='time';
+async function loadQ(){try{const r=await fetch('questions.xlsx?v='+Date.now());if(!r.ok)throw 0;const wb=XLSX.read(await r.arrayBuffer());
+ UN.forEach(u=>{QS[u.id]=[];const ws=wb.Sheets[u.sheet];if(!ws)return;
+  XLSX.utils.sheet_to_json(ws,{defval:''}).forEach(o=>{const t=String(o['유형']).trim(),q=String(o['문제']).trim(),a=String(o['정답']).trim(),ch=[1,2,3,4].map(i=>String(o['보기'+i]).trim()),ox=t=='ox',ans=ox?(a=='O'?0:a=='X'?1:-1):+a-1;
+   if(!q||String(o['사용']).trim().toUpperCase()=='N'||(t!='mc4'&&!ox)||(ox?ans<0:(ch.some(c=>!c)||!(ans>=0&&ans<4))))return;
+   QS[u.id].push([+o['난이도']||2,ox?'ox':'mc',q,ox?['O','X']:ch,ans,String(o['해설']),String(o['소단원']).trim()||'기타'])})})}catch(e){LOADERR='문제 파일(questions.xlsx)을 불러오지 못했어요.'}}
+function mk(d,t,q,ch,ans,ex){if(t!='ox'){const a=ch[ans];ch=shuf(ch);ans=ch.indexOf(a)}return{d,t,q,ch,ans,ex}}
+
+/* 템플릿 1: 진리집합 (정답은 코드로 계산) */
+const setS=a=>'{'+a.join(', ')+'}';
+function tSet(){
+ const N=rnd(8,15),div=Math.random()<.6,k=div?pick([6,8,9,10,12,14,15,18,20,24]):rnd(2,5),ok=[];
+ for(let i=1;i<=N;i++)if(div?k%i==0:i%k==0)ok.push(i);
+ const non=[];for(let i=1;i<=N;i++)if(!ok.includes(i))non.push(i);
+ const e1=pick(non),e2=pick(non.filter(v=>v!=e1).concat([e1]));
+ const srt=a=>[...new Set(a)].sort((x,y)=>x-y);
+ let ds=[ok.slice(1),ok.slice(0,-1),srt(ok.concat(e1)),srt(ok.concat(e1,e2))];
+ if(div&&k>N)ds.push(srt(ok.concat(k)));
+ const key=setS(ok),seen=new Set([key]),w=[];
+ shuf(ds).forEach(a=>{const s=setS(a);if(a.length&&!seen.has(s)){seen.add(s);w.push(s)}});
+ if(w.length<3)return tSet();
+ return mk(1,'mc',`전체집합 U={x | x는 ${N} 이하의 자연수}일 때, 조건 'x는 ${k}의 ${div?'약수':'배수'}이다.'의 진리집합은?`,[key,...w.slice(0,3)],0,`${k}의 ${div?'약수':'배수'} 중 ${N} 이하인 수만 U의 원소입니다.`)}
+
+/* 템플릿 2: 충분·필요조건 (진리집합의 포함 관계로 계산) */
+function tCond(){
+ let q,r;
+ if(Math.random()<.5){const a=rnd(-3,6),b=rnd(-3,6);q=`p: x>${a}, q: x>${b} (x는 실수)`;r=a==b?2:a>b?0:1}
+ else{const L=[2,3,4,6,8,9,12],m=pick(L),n=pick(L);if(m==n)return tCond();q=`p: x는 ${m}의 배수, q: x는 ${n}의 배수 (x는 정수)`;r=m%n==0?0:n%m==0?1:3}
+ return mk(2,'mc',`${q}일 때, p는 q이기 위한 무슨 조건인가?`,['충분조건','필요조건','필요충분조건','충분조건도 필요조건도 아니다'],r,'진리집합 P, Q의 포함 관계로 판단합니다. P⊂Q이면 충분, Q⊂P이면 필요, P=Q이면 필요충분조건입니다.')}
+
+/* 템플릿 3: 모든/어떤 명제의 부정 */
+function tNeg(){const all=Math.random()<.5,k=rnd(1,4),m=rnd(2,9),e=`x²−${2*k}x+${m}`,ng={'>':'≤','≥':'<','<':'≥','≤':'>'},fl={'>':'<','≥':'≤','<':'>','≤':'≥'},r=pick(['>','≥','<','≤']),
+ s=(a,o)=>`${a?'모든':'어떤'} 실수 x에 대하여 ${e}${o}0이다`;
+ return mk(2,'mc',`'${s(all,r)}.'의 부정은?`,[s(!all,ng[r]),s(!all,r),s(all,ng[r]),s(!all,fl[r])],0,`'모든'은 '어떤'으로, '어떤'은 '모든'으로 바꾸고 부등호를 부정합니다(>는 ≤, ≥는 <).`)}
+/* 템플릿 4: 참인 명제의 대우 추론 */
+function tLogic(){const[v,w]=Math.random()<.5?['p','q']:['q','p'],n=a=>a[0]=='~'?a.slice(1):'~'+a,X=Math.random()<.5?v:'~'+v,Y=Math.random()<.5?w:'~'+w,f=(a,b)=>a+' → '+b,c=f(n(Y),n(X));
+ return mk(3,'mc',`명제 '${f(X,Y)}'가 참일 때, 항상 참인 명제는?`,[c,f(Y,X),f(n(X),n(Y)),f(X,n(Y))],0,`참인 명제의 대우는 항상 참입니다. '${f(X,Y)}'의 대우는 '${c}'입니다.`)}
+/* 템플릿 5: 보기 조합형 */
+function tComb(){const L=[2,3,4,6,8,9,12],g=[()=>{const a=pick(L),b=pick(L);return a==b?null:[`x가 ${a}의 배수이면 x는 ${b}의 배수이다`,a%b==0]},()=>{const s=rnd(2,6);return[`x²=${s*s}이면 x=${s}이다`,false]},()=>{const k=rnd(1,5);return[`x>${k}이면 x²>${k*k}이다`,true]},()=>{const k=rnd(1,5);return[`x²>${k*k}이면 x>${k}이다`,false]},()=>[`x가 ${pick([4,6,8,10])}의 배수이면 x는 짝수이다`,true]];
+ let st;for(;;){st=shuf([0,1,2,3,4]).slice(0,3).map(i=>g[i]());const t=st.filter(a=>a&&a[1]).length;if(st.every(Boolean)&&t>0&&t<3)break}
+ const lb=m=>[...m].map(i=>'ㄱㄴㄷ'[i]).join(', '),cs=[0,1,2].filter(i=>st[i][1]).join(''),o=shuf(['0','1','2','01','02','12','012'].filter(x=>x!=cs)).slice(0,3);
+ return mk(3,'mc',`x가 정수일 때, 다음 <보기> 중 참인 명제만을 있는 대로 고른 것은?\nㄱ. ${st[0][0]}.\nㄴ. ${st[1][0]}.\nㄷ. ${st[2][0]}.`,[cs,...o].map(lb),0,`각 명제의 반례를 찾아 참·거짓을 확인합니다. 참인 것은 ${lb(cs)}입니다.`)}
+/* 템플릿 6: 진리집합 → 조건 고르기 */
+function tSet2(){const N=rnd(10,15),I=[...Array(N)].map((_,i)=>i+1),S=[];
+ [6,8,9,10,12,14,15,18,20,24].forEach(k=>S.push([`x는 ${k}의 약수이다`,I.filter(i=>k%i==0)]));[2,3,4,5,6,7].forEach(m=>S.push([`x는 ${m}의 배수이다`,I.filter(i=>i%m==0)]));
+ const c=pick(S.filter(a=>a[1].length>1)),o=[c],seen=new Set([setS(c[1])]);
+ shuf(S).forEach(a=>{const k=setS(a[1]);if(o.length<4&&a[1].length&&!seen.has(k)){seen.add(k);o.push(a)}});
+ return mk(2,'mc',`전체집합 U={x | x는 ${N} 이하의 자연수}일 때, 진리집합이 ${setS(c[1])}인 조건은?`,o.map(a=>a[0]),0,'각 조건의 진리집합을 U 안에서 구해 비교합니다.')}
+/* 템플릿 7: 조건의 부정과 진리집합 */
+function tNegSet(){const N=rnd(10,14),U=[...Array(N)].map((_,i)=>i+1),pr=n=>n>1&&[...Array(n)].every((_,i)=>i<2||n%i),
+ F=[['짝수',x=>x%2==0],['홀수',x=>x%2==1],['3의 배수',x=>x%3==0],['4의 배수',x=>x%4==0],['소수',pr],['6의 약수',x=>6%x==0]],
+ [A,B]=shuf(F).slice(0,2),and=Math.random()<.5,P=U.filter(x=>and?A[1](x)&&B[1](x):A[1](x)||B[1](x)),cc=U.filter(x=>!P.includes(x)),
+ ds=[P,U.filter(x=>and?!A[1](x)&&!B[1](x):!A[1](x)||!B[1](x)),U.filter(x=>!A[1](x)),U.filter(x=>and?A[1](x)||B[1](x):A[1](x)&&B[1](x))],seen=new Set([setS(cc)]),w=[];
+ ds.forEach(a=>{const k=setS(a);if(a.length&&!seen.has(k)){seen.add(k);w.push(k)}});
+ if(!cc.length||w.length<3)return tNegSet();
+ return mk(3,'mc',`전체집합 U={x | x는 ${N} 이하의 자연수}일 때, 조건 p: 'x는 ${A[0]}${and?'이고':'이거나'} ${B[0]}이다.'에 대하여 ~p의 진리집합은?`,[setS(cc),...w.slice(0,3)],0,`~p는 p의 진리집합의 여집합입니다. '이고'의 부정은 '또는', '이거나'의 부정은 '그리고'로 바뀝니다.`)}
+/* 템플릿 8: 명제 판별 */
+function tProp(){const a=rnd(2,9),b=rnd(2,9),n=pick([12,18,20,24,30,36]),dc=[...Array(n)].map((_,i)=>i+1).filter(i=>n%i==0).length,
+ P=[`${a}+${b}=${a+b+rnd(0,1)}`,`${n}의 약수는 ${dc+rnd(0,1)}개이다`,'모든 소수는 홀수이다','2는 짝수인 소수이다','모든 정사각형은 마름모이다','삼각형의 세 내각의 크기의 합은 180°이다'],
+ C=[`x+${a}=${a+b}`,`${a}x−${b}>${a*b}`,`x²=${a*a}`,`x는 ${n}의 약수이다`];
+ return mk(1,'mc','다음 중 명제가 아닌 것은?',[pick(C),...shuf(P).slice(0,3)],0,'참·거짓을 판별할 수 있으면 명제이고, 변수 x 때문에 참·거짓이 정해지지 않으면 명제가 아닙니다(조건). 거짓인 문장도 명제입니다.')}
+/* 템플릿 9: 반례 찾기 */
+function tCnt(){const S=rnd(0,2),y=-rnd(1,4),x=S-y+rnd(1,3),t=(a,b)=>`x=${a}, y=${b}`,o=[t(x,y),t(rnd(1,5),rnd(S+1,6)),t(-rnd(1,5),-rnd(1,5)),Math.random()<.5?t(S,0):t(0,S)];
+ if(new Set(o).size<4)return tCnt();
+ return mk(2,'mc',`x, y가 실수일 때, 명제 'x+y>${S}이면 x>0이고 y>0이다.'가 거짓임을 보이는 반례는?`,o,0,`반례는 가정(x+y>${S})은 만족하고 결론(x>0이고 y>0)은 만족하지 않는 값입니다.`)}
+/* 템플릿 10: '모든/어떤' 명제의 참·거짓 */
+function tAll(){const pl=(b,c)=>`x²${b?(b>0?'+':'−')+(Math.abs(b)==1?'':Math.abs(b))+'x':''}${c?(c>0?'+':'−')+Math.abs(c):''}`,
+ G=[(p,d)=>[`모든 실수 x에 대하여 ${p}>0이다`,d<0],(p,d)=>[`어떤 실수 x에 대하여 ${p}<0이다`,d>0],(p,d)=>[`모든 실수 x에 대하여 ${p}≥0이다`,d<=0],(p,d)=>[`어떤 실수 x에 대하여 ${p}=0이다`,d>=0]];
+ for(;;){const o=G.map(g=>{const b=2*rnd(-3,3),c=rnd(-3,9);return g(pl(b,c),b*b-4*c)});
+  if(o.filter(a=>a[1]).length==1)return mk(2,'mc','전체집합이 실수 전체일 때, 다음 중 참인 명제는?',o.map(a=>a[0]),o.findIndex(a=>a[1]),'이차식 x²+bx+c의 판별식 D=b²−4c의 부호(또는 완전제곱식)로 판단합니다.')}}
+/* 템플릿 11: 가정과 결론 */
+function tHyp(){const L=[2,3,4,6,8,9,12],a=pick(L),b=pick(L);if(a==b)return tHyp();
+ const P=`x가 ${a}의 배수이다`,Q=`x는 ${b}의 배수이다`,Pn=`x가 ${a}의 배수가 아니다`,Qn=`x는 ${b}의 배수가 아니다`,f=(p,q)=>`가정: ${p} / 결론: ${q}`;
+ return mk(1,'mc',`명제 'x가 ${a}의 배수이면 x는 ${b}의 배수이다.'의 가정과 결론을 바르게 짝지은 것은?`,[f(P,Q),f(Q,P),f(P,Qn),f(Pn,Q)],0,"'~이면'에서 앞부분이 가정, 뒷부분이 결론입니다.")}
+/* 템플릿 12: 역과 대우의 참·거짓 */
+function tConv(){const k=rnd(1,5),L=[2,3,4,6,8,9,12],a=pick(L),b=pick(L),r=rnd(0,2);let st,o,c;
+ if(r==0){if(a==b)return tConv();st=`x가 정수일 때, 'x가 ${a}의 배수이면 x는 ${b}의 배수이다.'`;o=a%b==0;c=b%a==0}
+ else if(r==1){st=`x가 실수일 때, 'x>${k}이면 x²>${k*k}이다.'`;o=true;c=false}
+ else{st=`x가 실수일 때, 'x²=${k*k}이면 x=${k}이다.'`;o=false;c=true}
+ const T=v=>v?'참':'거짓',f=(x,y)=>`역: ${T(x)}, 대우: ${T(y)}`;
+ return mk(2,'mc',`${st}의 역과 대우의 참·거짓을 순서대로 나타낸 것은?`,[f(c,o),f(!c,o),f(c,!o),f(!c,!o)],0,'대우는 원래 명제와 참·거짓이 항상 같습니다. 역은 반례를 찾아 직접 판별합니다.')}
+/* 템플릿 13: 필요조건이 되도록 하는 a의 값 */
+function tRange(){const c=rnd(-2,6),t=rnd(0,2);let q,v,w;
+ if(t==0){q=`p: x≥a, q: x>${c}`;w='최댓값';v=c}else if(t==1){q=`p: x>a, q: x≥${c}`;w='최댓값';v=c-1}else{q=`p: x≤a, q: x<${c}`;w='최솟값';v=c}
+ const o=t==2?[v,v-1,v+1,v-2]:[v,v+1,v-1,v+2];
+ return mk(3,'mc',`x가 실수이고 a가 정수일 때, ${q}에 대하여 p가 q이기 위한 필요조건이 되도록 하는 a의 ${w}은?`,o,0,'필요조건이면 q의 진리집합이 p의 진리집합의 부분집합이어야 합니다. 수직선에 그려서 경계값의 등호 포함 여부를 확인하세요.')}
+/* 템플릿 14: 절대부등식의 등호 조건 */
+function tAbs(){const p=rnd(1,3),q=rnd(1,3);if(p==q&&p>1)return tAbs();
+ const c=n=>n==1?'':n,e=(a,b,s='')=>`${c(a)}x=${s}${c(b)}y`,k=e(p,q),seen=new Set([k]),w=[];
+ [e(q,p),e(p,q,'−'),'x=y','x=−y','x=y=0일 때만','x=0 또는 y=0','x=0'].forEach(x=>{if(!seen.has(x)){seen.add(x);w.push(x)}});
+ return mk(3,'mc',`x, y가 실수일 때, 부등식 ${c(p*p)}x²+${c(q*q)}y²≥${2*p*q}xy가 성립한다. 등호가 성립하는 경우는?`,[k,...w.slice(0,3)],0,`(${c(p)}x−${c(q)}y)²≥0이므로 ${c(p)}x=${c(q)}y일 때 등호가 성립합니다.`)}
+/* 템플릿 15: 귀류법 증명 빈칸 */
+function tProof(){const p=pick([3,5,7]),o=pick([3,5,7].filter(x=>x!=p));
+ return mk(2,'mc',`√${p}이 무리수임을 귀류법으로 증명하는 과정이다.\n√${p}=n/m (m, n은 서로소인 자연수)이라 하면 n²=${p}m²이다.\nn²이 ${p}의 배수이므로 n도 ${p}의 배수이다. n=${p}k로 놓으면 m²=${p}k²이므로 m도 ${p}의 배수이다.\n즉 m, n이 모두 (가)이므로 서로소라는 가정에 모순이다.\n(가)에 알맞은 것은?`,[`${p}의 배수`,`${p}의 약수`,'짝수',`${o}의 배수`],0,`m, n이 모두 ${p}의 배수이면 ${p}이 공약수가 되어 서로소가 아닙니다.`)}
+tCond.h=tNeg.h=tLogic.h=tComb.h=tNegSet.h=tAll.h=tConv.h=tRange.h=tAbs.h=tProof.h=1;
+tLogic.d3=tComb.d3=tNegSet.d3=tRange.d3=tAbs.d3=1;
+const TP={p:[tSet,tSet2,tNegSet,tProp,tCnt,tAll,tHyp,tConv,tCond,tRange,tAbs,tProof,tNeg,tLogic,tComb]};
+
+const tier=f=>f.d3?3:f.h?2:1;
+function wt(c){const r=G.run,w=r<3?[3,1,0]:r<7?[1,2,1]:[0,1,2],o=c.flatMap(f=>Array(w[tier(f)-1]).fill(f));return o.length?o:c}
+function pickQ(){const m=G.mode,tp=TP[UNIT]||[];
+ if(tp.length&&(!B.length||Math.random()<(m=='time'?.7:.5))){let pl=m=='boss'?tp.filter(f=>f.h):tp;if(m=='boss'&&G.correct>=4)pl=pl.filter(f=>f.d3);let c=pl.filter(f=>!G.lt.includes(f));if(!c.length)c=pl;let f=pick(m=='time'?wt(c):c);const mf=UNIT=='p'&&tp.find(x=>x.name==todayType()[0]);if(mf&&Math.random()<.25&&!G.lt.includes(mf))f=mf;G.lt=[f,...G.lt].slice(0,2);const q=f();q.tn=f.name;return q}
+ let all=B.map((x,i)=>i).filter(i=>m!='boss'||B[i][0]>1);if(m=='time'){const k=all.filter(i=>B[i][0]<=(G.run<3?2:3));if(k.length)all=k}
+ let p=all.filter(i=>!G.used.has(i));if(!p.length){G.used.clear();p=all.length?all:B.map((x,i)=>i)}
+ const i=pick(p);G.used.add(i);const q=mk(...B[i]);q.tn='엑셀:'+(B[i][6]||'기타');return q}
+
+/* ---- 학습 기록: XP, 레벨, 일일 목표, 스트릭, 업적 ---- */
+const today=()=>new Date().toLocaleDateString('sv'),yest=()=>{const d=new Date();d.setDate(d.getDate()-1);return d.toLocaleDateString('sv')};
+const lv=x=>Math.floor(Math.sqrt(x/60))+1;
+let UD=null;
+const defU=()=>({sid:name,xp:0,solved:0,correct:0,goal:20,day:'',dayN:0,sd:'',sn:0,ach:{},us:{},mx:0,cn:{boss:0,flaw:0}});
+async function loadU(){UD=LS.g('mj_u_'+name,null);try{if(db){await au.authStateReady();const o=await getDoc(doc(db,'users',name));if(o.exists())UD=o.data()}}catch(e){}
+ UD=Object.assign(defU(),UD||{});UD.sid=name;if(UD.day!=today()){UD.day=today();UD.dayN=0}UD.cn=UD.cn||{};if(!UD.cn.cm)retro()}
+async function saveU(){LS.s('mj_u_'+name,UD);try{if(db)await setDoc(doc(db,'users',name),UD)}catch(e){}}
+const curStreak=()=>UD.sd==today()||UD.sd==yest()?UD.sn:0;
+/* [id, 아이콘, 이름, 설명, 히든, 조건(u=기록, g=이번 판)] */
+const AC=[
+['first','🌱','첫걸음','첫 정답 맞히기',0,u=>u.correct>=1],
+['run10','🔥','불씨 점화','10연속 정답',0,u=>u.mx>=10],
+['run20','🔥','활활 불꽃','20연속 정답',0,u=>u.mx>=20],
+['run30','🌋','화염 폭풍','30연속 정답',0,u=>u.mx>=30],
+['speed','🏃','스피드 러너','타임어택에서 20문제 정답',0,(u,g)=>g.mode=='time'&&g.correct>=20],
+['acc','🎯','명사수','타임어택에서 15문제 이상 풀고 정답률 90% 이상',0,(u,g)=>g.mode=='time'&&g.total>=15&&g.correct/g.total>=.9],
+['perf','💎','완벽주의자','타임어택에서 오답 없이 15문제 이상 정답',0,(u,g)=>g.mode=='time'&&g.total>=15&&g.correct==g.total],
+['unit','📚','단원 정복자','한 단원 50문제 이상, 정답률 90% 이상',0,u=>Object.values(u.us).some(x=>x.n>=50&&x.c/x.n>=.9)],
+['rank','🥇','랭커','단원 랭킹 TOP 10 진입',0,null],
+['s3','⭐','반짝 별','3일 연속 학습',0,u=>u.sn>=3],
+['s7','🌟','빛나는 별','7일 연속 학습',0,u=>u.sn>=7],
+['s14','🌠','별똥별','14일 연속 학습',0,u=>u.sn>=14],
+['s30','✨','은하수','30일 연속 학습',1,u=>u.sn>=30],
+['owl','🦉','올빼미','밤 10시 이후에 플레이',1,(u,g)=>g.h>=22&&g.total>=3],
+['bird','🐦','아침형 인간','아침 7시 이전에 플레이',1,(u,g)=>g.h<7&&g.total>=3],
+['comeback','🥋','역전의 용사','5번 연속 틀린 뒤 10연속 정답',1,(u,g)=>!!g.cb],
+['flash','⚡','번개손','3초 안에 5연속 정답',1,(u,g)=>!!g.fast5],
+['last','😅','아슬아슬','타임어택 종료 1초 전에 정답',1,(u,g)=>!!g.last]];
+function track(ok,q){const k=UNIT+'.'+(q.tn||'?'),o=(G.ty=G.ty||{})[k]||(G.ty[k]={n:0,c:0,t:0});o.n++;if(ok)o.c++;o.t+=Math.min(Date.now()-(G.qs||Date.now()),60000);if(ok){G.run++;G.mr=Math.max(G.mr,G.run);G.xp+=10+5*(q.d-1);if(G.wr>=5)G.arm=1;G.wr=0;if(G.arm)G.ar=(G.ar||0)+1;if(G.ar>=10)G.cb=1;
+ G.f=Date.now()-G.qs<=3000?G.f+1:0;if(G.f>=5)G.fast5=1;if(G.mode=='time'&&G.end-Date.now()<=1000)G.last=1}else{G.run=0;G.wr++;G.arm=0;G.ar=0;G.f=0}}
+function applyGame(){GC={ans:0,lvl:0,streak:0,ach:0,mis:0,total:0};if(!G.total)return[];
+ UD.xp+=G.xp;{const nl=lv(UD.xp),ol=UD.cn.lv||1;if(nl>ol)GC.lvl=(nl-ol)*150;UD.cn.lv=Math.max(nl,ol)}UD.solved+=G.total;UD.correct+=G.correct;UD.mx=Math.max(UD.mx,G.mr);
+ const us=UD.us[UNIT]||(UD.us[UNIT]={n:0,c:0});us.n+=G.total;us.c+=G.correct;
+ if(UD.day!=today()){UD.day=today();UD.dayN=0}UD.dayN+=G.total;UD.cn.dd=UD.cn.dd||{};UD.cn.dd[today()]=(UD.cn.dd[today()]||0)+G.total;for(const k in UD.cn.dd)if(k<ago(13))delete UD.cn.dd[k];const ty=UD.cn.ty=UD.cn.ty||{};for(const k in G.ty){const o=ty[k]||(ty[k]={n:0,c:0,t:0});o.n+=G.ty[k].n;o.c+=G.ty[k].c;o.t+=G.ty[k].t}UD.cn.la=today();
+ if(UD.dayN>=5&&UD.sd!=today()){UD.sn=UD.sd==yest()?UD.sn+1:1;UD.sd=today();GC.streak=100}
+ if(G.mode=='boss'&&G.correct>=5){UD.cn.boss++;if(G.lives>=3)UD.cn.flaw++}
+ const dm=ensureDM();dm.p[0]=Math.min(20,UD.dayN);if(G.mode=='time')dm.p[1]=1;const tk=(G.ty||{})['p.'+todayType()[0]];if(tk)dm.p[2]=Math.min(3,dm.p[2]+tk.c);
+ [20,1,3].forEach((n,i)=>{if(!dm.g[i]&&dm.p[i]>=n){dm.g[i]=1;GC.mis+=100}});if(!dm.b&&dm.g.every(x=>x)){dm.b=1;GC.mis+=150}
+ if(G.mode=='time')GC.ans=G.correct*10;
+ const nw=[];AC.forEach(a=>{if(!UD.ach[a[0]]&&a[5]&&a[5](UD,G)){UD.ach[a[0]]=today();nw.push(a);GC.ach+=ACC[a[0]]||0}});
+ GC.total=GC.ans+GC.lvl+GC.streak+GC.ach+GC.mis;UD.cn.c=(UD.cn.c||0)+GC.total;saveU();return nw}
+function hud(){const l=lv(UD.xp),a=60*(l-1)**2,b=60*l*l,p=Math.round((UD.xp-a)/(b-a)*100),n=Math.min(UD.dayN,5);
+ return `<div class="card"><div class="bar"><span>Lv.${l}</span><span>🔥 ${curStreak()}일째 · 🪙 ${nf(UD.cn.c)}</span></div><div class="pg"><i style="width:${p}%"></i></div><div class="s" style="font-size:13px">XP ${UD.xp} / ${b}</div><div class="bar" style="margin-top:10px"><span>오늘 ${n}/5문제${n>=5?' ✅ 스트릭 달성':''}</span></div><div class="pg"><i style="width:${n*20}%;background:#4cc38a"></i></div></div>`}
+function achv(){R(`<h1>🏅 업적</h1><p class="sub">${AC.filter(a=>UD.ach[a[0]]).length} / ${AC.length} 달성</p>${AC.map(a=>{const d=UD.ach[a[0]],sh=d||!a[4];return `<div class="card row${d?' me':''}" style="${d?'':'opacity:.6'}"><b>${sh?a[1]:'❓'}</b><span>${sh?a[2]:'???'}<br><small class="s">${sh?a[3]+' · 🪙'+(ACC[a[0]]||0):'숨겨진 업적'}</small></span><span class="s" style="font-size:12px">${d||''}</span></div>`}).join('')}<button class="b g" data-a="menu">돌아가기</button>`)}
+/* ---- 설정, 효과음, 효과 ---- */
+const SET=Object.assign({snd:1,dark:(typeof matchMedia!='undefined'&&matchMedia('(prefers-color-scheme: dark)').matches)?1:0},LS.g('mj_set',{}));
+const applyTheme=()=>{if(document.documentElement)document.documentElement.dataset.theme=SET.dark?'dark':'light'};applyTheme();
+let AX=null;
+function tone(f,t,d,v=.15,ty='sine'){if(!SET.snd)return;try{AX=AX||new(window.AudioContext||window.webkitAudioContext)();const o=AX.createOscillator(),g=AX.createGain(),n=AX.currentTime+t;o.type=ty;o.frequency.value=f;g.gain.setValueAtTime(v,n);g.gain.exponentialRampToValueAtTime(.001,n+d);o.connect(g);g.connect(AX.destination);o.start(n);o.stop(n+d)}catch(e){}}
+const snd=k=>k=='ok'?(tone(660,0,.12),tone(880,.08,.18)):k=='bad'?tone(180,0,.25,.12,'sawtooth'):[523,659,784,1047].forEach((f,i)=>tone(f,i*.07,.16));
+function burst(el){if(!el||!document.createElement)return;const r=el.getBoundingClientRect?el.getBoundingClientRect():{left:200,top:300,width:0,height:0};
+ for(let i=0;i<14;i++){const p=document.createElement('i'),a=Math.random()*6.28,d=40+Math.random()*60;p.className='cf';p.style.cssText=`left:${r.left+r.width/2}px;top:${r.top+r.height/2}px;--x:${Math.cos(a)*d}px;--y:${Math.sin(a)*d}px;background:${pick(['#4cc38a','#7bdc9d','#b7f0c8','#ffd54f'])}`;document.body.appendChild(p);setTimeout(()=>p.remove(),700)}}
+function flame(n){if(!document.createElement)return;const p=document.createElement('div');p.className='fl';p.textContent=`🔥 ${n}연속 콤보! +${{3:250,5:500,10:1500}[n]||0}`;document.body.appendChild(p);snd('combo');setTimeout(()=>p.remove(),950)}
+function minus(n){if(!document.createElement)return;const p=document.createElement('div');p.className='fl mn';p.textContent='−'+n+'점';document.body.appendChild(p);setTimeout(()=>p.remove(),950)}
+const ago=n=>{const d=new Date();d.setDate(d.getDate()-n);return d.toLocaleDateString('sv')};
+async function stats(){R('<h1>📊 내 기록</h1><p class="sub">불러오는 중…</p>');
+ const dd=UD.cn.dd||{},wk=Object.keys(dd).filter(k=>k>=ago(6)).reduce((a,k)=>a+dd[k],0),best={};
+ for(const u of UN){best[u.id]=null;try{if(db){const o=await getDoc(doc(db,'rank',u.id+'_'+name));if(o.exists())best[u.id]=o.data().score}}catch(e){}}
+ const rows=UN.map(u=>{const x=UD.us[u.id],p=x&&x.n?Math.round(x.c/x.n*100):0;return `<div class="card"><div class="bar"><span>${u.e} ${u.n}</span><span>${x&&x.n?p+'% ('+x.c+'/'+x.n+')':'기록 없음'}</span></div><div class="pg"><i style="width:${p}%;background:#4cc38a"></i></div><div class="s" style="font-size:13px">타임어택 최고 ${best[u.id]==null?'-':best[u.id]+'점'}</div></div>`}).join('');
+ R(`<h1>📊 내 기록</h1><div class="card"><div class="bar"><span>오늘 푼 문제</span><b>${UD.dayN}</b></div><div class="bar"><span>최근 7일</span><b>${wk}</b></div><div class="bar"><span>전체</span><b>${UD.solved}</b></div><div class="bar"><span>최고 연속 정답</span><b>${UD.mx}</b></div></div><p class="sub" style="margin:16px 0 0"><b>단원별 정답률</b></p>${rows}<button class="b g" data-a="menu">돌아가기</button>`)}
+/* ---- 코인, 일일 미션 ---- */
+const ACC={first:300,run10:300,run20:500,run30:1000,speed:300,acc:300,perf:300,unit:300,rank:300,s3:300,s7:500,s14:1000,s30:2000,owl:500,bird:500,comeback:500,flash:500,last:500};
+const MT=[['tSet','진리집합 구하기'],['tSet2','조건 고르기'],['tNegSet','부정과 진리집합'],['tProp','명제 판별'],['tCnt','반례 찾기'],['tAll',"'모든/어떤' 참·거짓"],['tHyp','가정과 결론'],['tConv','역·대우 참거짓'],['tCond','충분·필요조건'],['tNeg',"'모든/어떤' 부정"],['tLogic','대우 추론']];
+const todayType=()=>MT[Math.floor(new Date(today()+'T00:00:00').getTime()/864e5)%MT.length];
+const MIS=()=>[['문제 20개 풀기',20,100],['타임어택 1판 하기',1,100],['오늘의 유형 · '+todayType()[1]+' 3문제 맞히기',3,100]];
+const nf=n=>(n||0).toLocaleString('ko-KR');
+function ensureDM(){const c=UD.cn;if(!c.dm||c.dm.d!=today())c.dm={d:today(),p:[0,0,0],g:[0,0,0],b:0};return c.dm}
+let NOTE=null,GC={};
+function retro(){if(UD.cn.cm)return;
+ const a=Object.keys(UD.ach).reduce((x,k)=>x+(ACC[k]||0),0),p=UD.correct*10,l=(lv(UD.xp)-1)*150,k=curStreak()*100,t=a+p+l+k;
+ UD.cn.c=(UD.cn.c||0)+t;UD.cn.cm=1;UD.cn.lv=lv(UD.xp);if(t>0)NOTE={a,s:p,l,k,t};saveU()}
+const coinLines=()=>(GC.total?`<br>🪙 <b>+${nf(GC.total)}</b> (${[GC.ans&&'정답 '+GC.ans,GC.lvl&&'레벨업 '+GC.lvl,GC.streak&&'스트릭 '+GC.streak,GC.ach&&'업적 '+GC.ach,GC.mis&&'미션 '+GC.mis].filter(Boolean).join(' · ')})`:'')+(G.mode=='free'?'<br><span class="s">무한 연습은 정답 코인이 없어요</span>':'');
+function toast(t){if(!document.createElement)return;const p=document.createElement('div');p.className='fl';p.textContent=t;document.body.appendChild(p);setTimeout(()=>p.remove(),2200)}
+const noteCard=()=>NOTE?`<div class="card" style="border-color:var(--pri)"><b>🎁 지금까지의 기록으로 코인을 받았어요!</b><div style="font-size:30px;font-weight:900;margin:6px 0">🪙 ${nf(NOTE.t)}</div><div class="s" style="font-size:14px">업적 ${nf(NOTE.a)} · 풀이 ${nf(NOTE.s)} · 레벨 ${nf(NOTE.l)} · 스트릭 ${nf(NOTE.k)}</div><button class="b" data-a="ok">확인</button></div>`:'';
+function missionCard(){const dm=ensureDM(),ms=MIS(),n=dm.g.filter(Boolean).length;dm.p[0]=Math.min(20,UD.dayN);
+ return `<div class="card"><div class="bar"><b>📅 오늘의 미션</b><span class="s">${n}/3 완료</span></div>${ms.map((m,i)=>{const p=Math.min(dm.p[i],m[1]);return `<div style="margin-top:10px"><div class="bar" style="font-size:15px"><span>${dm.g[i]?'✅':'⬜'} ${m[0]}</span><span class="s">🪙${m[2]}</span></div><div class="pg"><i style="width:${p/m[1]*100}%;background:${dm.g[i]?'#4cc38a':'#8f7cf5'}"></i></div></div>`}).join('')}<div class="s" style="font-size:13px;margin-top:8px">${dm.b?'✅ 전부 완료! 보너스 🪙150을 받았어요':'3개를 모두 완료하면 보너스 🪙150'}</div></div>`}
+function shop(){R(`<div class="hero">🛍️</div><h1>상점</h1><p class="sub">🪙 ${nf(UD.cn.c)} 코인을 가지고 있어요</p><div class="card" style="text-align:center"><div style="font-size:44px">🚧</div><b>오픈 예정이에요!</b><p class="s" style="margin:6px 0 0">칭호, 화면 테마, 캐릭터 꾸미기가 곧 열려요.<br>그동안 코인을 모아 두세요.</p></div><button class="b g" data-a="menu">돌아가기</button>`)}
+const em=id=>id+'@mj-student.example.com',pwd=p=>p+'mj',g=i=>document.getElementById(i);
+const acts={
+ async go(){const id=g('sid').value.trim(),pin=g('pin').value.trim(),er=g('er');
+  if(!/^\d{5}$/.test(id)){er.textContent='학번은 숫자 5자리로 입력해 주세요.';return}
+  if(!/^\d{4}$/.test(pin)){er.textContent='비밀번호는 숫자 4자리로 입력해 주세요.';return}
+  if(!au){name=id;await loadU();menu();return}
+  er.textContent='입장 중…';
+  try{await signInWithEmailAndPassword(au,em(id),pwd(pin))}
+  catch(e){
+   if(e.code=='auth/too-many-requests'){er.textContent='시도가 너무 많아요. 잠시 후 다시 해 주세요.';return}
+   try{await createUserWithEmailAndPassword(au,em(id),pwd(pin))}
+   catch(e2){er.textContent=e2.code=='auth/email-already-in-use'?'비밀번호가 달라요. 다시 확인해 주세요.':'입장에 실패했어요. 잠시 후 다시 시도해 주세요.';return}}
+  name=id;await loadU();menu()},
+ async logout(){if(au)await signOut(au);name='';home()},
+ home,menu,units,rank,achv,stats,shop,ok(){NOTE=null;menu()},snd(){SET.snd=SET.snd?0:1;LS.s('mj_set',SET);if(SET.snd)snd('ok');menu()},dark(){SET.dark=SET.dark?0:1;LS.s('mj_set',SET);applyTheme();menu()},goal(b){UD.goal=+b.dataset.v;saveU();menu()},back(){name?menu():home()},pm(b){MODE=b.dataset.v;units()},unit(b){UNIT=b.dataset.v;start(MODE)},ru(b){UNIT=b.dataset.v;rank()},
+ start(b){start(b.dataset.v)},ans(b){ans(+b.dataset.v)},nx(){G.done?finish():next()},quit(){finish()}
+};
+A.onclick=e=>{const b=e.target.closest('[data-a]');if(b&&acts[b.dataset.a])acts[b.dataset.a](b)};
+A.oninput=e=>{if(e.target.matches('#sid,#pin'))e.target.value=e.target.value.replace(/\D/g,'')};
+
+function home(){R(`<div class="hero">🦊</div><h1>수학 챌린지</h1><p class="sub">공통수학2 · 단원별 게임</p><div class="card"><label for="sid">학번 (숫자 5자리)</label><input id="sid" inputmode="numeric" maxlength="5" autocomplete="username" placeholder="예: 10215"><label for="pin" style="margin-top:14px">비밀번호 (숫자 4자리)</label><input id="pin" type="password" inputmode="numeric" maxlength="4" autocomplete="current-password" placeholder="••••"><button class="b" data-a="go">🚀 입장하기</button><p id="er" class="s" style="margin:10px 0 0"></p><p class="s" style="font-size:13px;margin:6px 0 0">처음 입장하면 자동으로 가입돼요. 학번과 비밀번호는 이 게임 랭킹에만 쓰이고, 랭킹에는 학번이 표시됩니다.</p></div>`)}
+function menu(){clearInterval(G&&G.iv);R(`<div class="hero">🦊</div><h1>${esc(name)} 님, 반가워요!</h1><p class="sub">${LOADERR||'어떤 모드로 도전할까요?'}</p>${noteCard()}${hud()}${missionCard()}<div class="grid">${['time','free'].map(k=>{const m=M[k];return `<button class="b m ${k}" data-a="pm" data-v="${k}"><span class="em">${m.e}</span><span>${m.n}<small>${m.d}</small></span></button>`}).join('')}</div><button class="b g" data-a="rank">🏆 랭킹 보기</button><button class="b g" data-a="achv">🏅 업적</button><button class="b g" data-a="shop">🛍️ 상점</button><button class="b g" data-a="stats">📊 내 기록</button><div class="goal"><button class="gb" data-a="snd">${SET.snd?'🔊 효과음 켜짐':'🔇 효과음 꺼짐'}</button><button class="gb" data-a="dark">${SET.dark?'☀️ 라이트 모드':'🌙 다크 모드'}</button></div><button class="b g" data-a="logout">👋 로그아웃</button>`)}
+function units(){R(`<div class="hero">${M[MODE].e}</div><h1>${M[MODE].n}</h1><p class="sub">공부할 단원을 골라 보세요</p><div class="grid">${UN.map(u=>{const n=(QS[u.id]||[]).length+(TP[u.id]?1:0);return `<button class="b m ${u.id}" data-a="unit" data-v="${u.id}"${n?'':' disabled'}><span class="em">${u.e}</span><span>${u.n}<small>${n?u.d:'준비 중'}</small></span></button>`}).join('')}</div><button class="b g" data-a="menu">← 처음으로</button>`)}
+
+function start(mode){
+ clearInterval(G&&G.iv);
+ B=QS[UNIT]||[];G={xp:0,wr:0,run:0,mr:0,f:0,h:new Date().getHours(),lt:[],mode,score:0,streak:0,correct:0,total:0,lives:3,lv:1,used:new Set(),wrong:[],end:Date.now()+(M[mode].time||0)*1000};
+ if(mode=='time'||mode=='boss')G.iv=setInterval(tick,250);
+ next()}
+function stat(){const m=G.mode;if(m=='time')return Math.max(0,Math.ceil((G.end-Date.now())/1000))+'초';
+ if(m=='boss')return Math.max(0,Math.ceil((G.qend-Date.now())/1000))+'초 · '+'❤️'.repeat(Math.max(0,G.lives))+` 클리어 ${G.correct}/5`;
+ if(m=='chal')return `Lv.${G.lv} · ${G.streak}/10`;return `${G.correct}/${G.total}`}
+function setPg(){const m=G.mode,e=document.getElementById('pg');if(!e)return;
+ const p=m=='time'?(G.end-Date.now())/(M.time.time*10):m=='boss'?(G.qend-Date.now())/(G.qt*10):m=='chal'?G.streak*10:0;e.style.width=Math.max(0,Math.min(100,p))+'%'}
+function tick(){if(G.fin)return;const s=document.getElementById('st');if(s)s.textContent=stat();setPg();if(G.mode=='time'&&Date.now()>=G.end)finish();if(G.mode=='boss'&&!G.lock&&Date.now()>=G.qend)ans(-1)}
+function next(){if(G.fin)return;G.q=pickQ();G.lock=false;G.done=false;const q=G.q;G.qs=Date.now();if(G.mode=='boss'){G.qt=q.d==3?50:30;G.qend=Date.now()+G.qt*1000}
+ R(`<div class="bar"><span>${M[G.mode].e} ${M[G.mode].n}</span><span>점수 <b id="sc">${G.score}</b></span></div>
+<div class="bar s"><span id="cb">${G.streak>1?'🔥 '+G.streak+'연속':''}</span><span id="st">${stat()}</span></div>
+<div class="pg"><i id="pg"></i></div>
+<div class="card"><div class="s">${['','쉬움','보통','어려움'][q.d]}${location.hash=='#debug'?' · '+(q.tn||'엑셀'):''}</div><div style="font-size:19px;font-weight:700;white-space:pre-line">${esc(q.q)}</div></div>
+${q.ch.map((c,i)=>`<button class="b g" data-a="ans" data-v="${i}">${q.t=='ox'?'':'①②③④'[i]+' '}${esc(c)}</button>`).join('')}
+<div id="fb"></div><button class="b g" data-a="quit" style="margin-top:24px">그만하기</button>`);setPg()}
+function ans(i){
+ if(G.lock||G.fin)return;G.lock=true;const q=G.q,ok=i==q.ans,bs=A.querySelectorAll('[data-a=ans]');G.total++;
+ if(bs[i])bs[i].classList.add(ok?'ok':'bad');if(!ok)bs[q.ans].classList.add('ok');
+ let msg=ok?'🎉 '+pick(['훌륭해요!','좋아요!','잘했어요!','완벽해요!']):(i<0?'⏰ 시간 초과! ':'🥲 '+pick(['괜찮아요, 다음엔 맞힐 수 있어요!','아쉬워요, 정답을 확인해요!','실수는 성장의 지름길!'])+' ')+'정답은 '+q.ch[q.ans]+(!ok&&G.mode=='time'&&G.score>0?' · −'+Math.min(G.score,150)+'점':'');
+ track(ok,q);if(ok){G.correct++;G.streak++;G.score+=500+({3:250,5:500,10:1500}[G.streak]||0)}
+ else{G.streak=0;G.wrong.push(q);if(G.mode=='boss')G.lives--;if(G.mode=='time'){const l=Math.min(G.score,150);G.score-=l;if(l)minus(l)}}
+ if(G.mode=='chal'&&G.streak>=10){G.lv++;G.streak=0;msg='레벨 업! Lv.'+G.lv}
+ const m=G.mode;G.done=(m=='boss'&&(G.correct>=5||G.lives<=0));
+ if(ok){burst(bs[i]);snd('ok');if([3,5,10].includes(G.streak))flame(G.streak)}else snd('bad');
+ document.getElementById('sc').textContent=G.score;
+ document.getElementById('cb').innerHTML=G.streak>1?`<span class="pop">🔥 ${G.streak}연속</span>`:'';
+ document.getElementById('st').textContent=stat();setPg();
+ if(m=='time'){setTimeout(next,ok?350:3000);document.getElementById('fb').innerHTML=ok?`<p><b>${esc(msg)}</b></p>`:`<div class="card"><b>${esc(msg)}</b><br><span class="s">${esc(q.ex)}</span><div class="pg" style="margin-top:10px"><i id="wb" style="width:100%;transition:width 3s linear;background:#ef6a6a"></i></div></div>`;if(!ok)setTimeout(()=>{const w=document.getElementById('wb');if(w)w.style.width='0'},30)}
+ else document.getElementById('fb').innerHTML=`<div class="card"><b>${esc(msg)}</b><br><span class="s">${esc(q.ex)}</span></div><button class="b" data-a="nx">${G.done?'결과 보기':'다음 문제'}</button>`}
+async function save(){
+ const r={sid:name,unit:UNIT,score:G.score,n:G.correct,t:Date.now()},l=LS.g('mj_sc',[]);l.push(r);LS.s('mj_sc',l.slice(-200));
+ let st='인증';try{if(db){await au.authStateReady();st='읽기';const ref=doc(db,'rank',UNIT+'_'+name),o=await getDoc(ref);st='쓰기';if(!o.exists()||o.data().score<r.score)await setDoc(ref,r);return true}}catch(e){ERR=st+' '+(e.code||String(e))}return false}
+async function finish(){
+ if(G.fin)return;G.fin=1;clearInterval(G.iv);let note='';
+ if(G.mode=='time'&&G.total>0)note=(await save())?'랭킹에 기록했어요.':'이 기기에만 기록했어요. (오류: '+ERR+')';
+ const win=G.mode=='boss'&&G.correct>=5,nw=applyGame(),prog=`<div class="card">⭐ +${G.xp} XP · Lv.${lv(UD.xp)} · ${UD.dayN>=5?'🔥 오늘 스트릭 달성!':'오늘 '+UD.dayN+'/5문제'}${nw.map(a=>`<br>🏅 새 업적! ${a[1]} <b>${a[2]}</b> +${ACC[a[0]]||0}🪙`).join('')}${coinLines()}</div>`;
+ R(`<h1>${win?'🏆 ':'🎉 '}${G.mode=='boss'?(win?'보스 클리어!':'보스전 종료'):'결과'}</h1><div class="card"><div style="font-size:34px;font-weight:900">${G.score}점</div><div class="sub" style="margin:0">정답 ${G.correct} / ${G.total}${G.mode=='chal'?' · Lv.'+G.lv:''}</div>${note?`<p style="margin:8px 0 0">${note}</p>`:''}</div>${prog}${G.wrong.length?`<div class="card"><b>틀린 문제</b>${G.wrong.slice(0,8).map(q=>`<p>${esc(q.q)}<br><span class="s">정답: ${esc(q.ch[q.ans])} — ${esc(q.ex)}</span></p>`).join('')}</div>`:''}<button class="b" data-a="start" data-v="${G.mode}">다시 하기</button><button class="b g" data-a="rank">랭킹 보기</button><button class="b g" data-a="menu">처음으로</button>`)}
+async function rank(){
+ clearInterval(G&&G.iv);R('<h1>🏆 랭킹</h1><p class="sub">불러오는 중…</p>');let rows=[],shared=false;
+ try{if(db){const q=await getDocs(query(collection(db,'rank'),where('unit','==',UNIT)));rows=q.docs.map(d=>d.data());shared=true}}catch(e){ERR=e.code||String(e)}
+ if(!shared)rows=LS.g('mj_sc',[]).filter(r=>r.unit==UNIT);
+ const best={};rows.forEach(r=>{if(!best[r.sid]||r.score>best[r.sid].score)best[r.sid]=r});
+ const all=Object.values(best).sort((a,b)=>b.score-a.score),top=all.slice(0,10),med=['🥇','🥈','🥉'],mi=all.findIndex(r=>r.sid==name);if(mi>=0&&mi<10&&UD&&!UD.ach.rank){UD.ach.rank=today();UD.cn.c=(UD.cn.c||0)+ACC.rank;saveU();toast('🏅 랭커 업적! +'+ACC.rank+'코인')}
+ const row=(r,i)=>`<div class="card row${r.sid==name?' me':''}"><b>${med[i]||i+1}</b><span>${esc(r.sid)}</span><span>${r.score}점</span></div>`;
+ R(`<h1>🏆 타임어택 랭킹</h1><div class="tabs">${UN.map(x=>`<button class="b ${x.id==UNIT?'':'g'} t" data-a="ru" data-v="${x.id}">${x.e} ${x.n}</button>`).join('')}</div><p class="sub" style="margin-top:12px">${shared?'상위 10명 · 학번별 최고 점수':'이 기기에서 한 기록만 표시됩니다 (오류: '+ERR+')'}</p>${top.length?top.map(row).join(''):'<div class="card">아직 기록이 없어요. 타임어택으로 첫 기록을 남겨 보세요 ✨</div>'}${mi>=10?'<p class="sub">내 순위</p>'+row(all[mi],mi):''}<button class="b g" data-a="menu">돌아가기</button>`)}
+
+if(au)onAuthStateChanged(au,u=>{if(!u&&name){clearInterval(G&&G.iv);name='';home()}});
+(async()=>{await loadQ();if(au){await au.authStateReady();const u=au.currentUser;if(u&&/^\d{5}@/.test(u.email||'')){name=u.email.split('@')[0];await loadU();menu();return}}home()})();
+</script></body></html>
