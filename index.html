@@ -47,6 +47,10 @@ input:focus,button:focus-visible{outline:3px solid var(--pri);outline-offset:2px
 .b:disabled{opacity:.5;cursor:not-allowed}.m.p{background:#e0d4ff}.m.f{background:#d3f0ff}.m.r{background:#ffe3cf}
 .grid{display:grid;gap:0 12px}
 @media(min-width:600px){.grid{grid-template-columns:1fr 1fr}}
+.dgm{display:inline-block;vertical-align:middle;margin:6px 8px 6px 0}.dgm svg{display:block;width:220px;max-width:100%;height:auto;overflow:visible}.dgm text{fill:currentColor;font:600 13px 'Noto Sans KR',system-ui,sans-serif}.dgm .sl{font-style:italic;font-size:14px}.dgm ellipse,.dgm line{stroke:currentColor;fill:none}
+.tb{border-collapse:collapse;margin:8px 0;font-weight:600}.tb th,.tb td{border:1.5px solid var(--line);padding:4px 12px;text-align:center;min-width:40px}.tb th{background:rgba(106,90,224,.1)}
+.dgrid{display:grid;gap:0 12px;grid-template-columns:1fr}@media(min-width:520px){.dgrid{grid-template-columns:1fr 1fr}}.b.dc{flex-direction:column;align-items:flex-start;gap:4px}.cn{font-weight:900}
+.qq,#fb .card{word-break:keep-all;overflow-wrap:anywhere}
 .bar{display:flex;justify-content:space-between;align-items:center;font-weight:700;margin:4px 0}
 .pg{height:10px;background:var(--line);border-radius:99px;overflow:hidden;margin:8px 0}
 .pg i{display:block;height:100%;width:0;background:#8f7cf5;transition:width .25s}
@@ -173,7 +177,267 @@ function tProof(){const p=pick([3,5,7]),o=pick([3,5,7].filter(x=>x!=p));
  return mk(2,'mc',`√${p}이 무리수임을 귀류법으로 증명하는 과정이다.\n√${p}=n/m (m, n은 서로소인 자연수)이라 하면 n²=${p}m²이다.\nn²이 ${p}의 배수이므로 n도 ${p}의 배수이다. n=${p}k로 놓으면 m²=${p}k²이므로 m도 ${p}의 배수이다.\n즉 m, n이 모두 (가)이므로 서로소라는 가정에 모순이다.\n(가)에 알맞은 것은?`,[`${p}의 배수`,`${p}의 약수`,'짝수',`${o}의 배수`],0,`m, n이 모두 ${p}의 배수이면 ${p}이 공약수가 되어 서로소가 아닙니다.`)}
 tCond.h=tNeg.h=tLogic.h=tComb.h=tNegSet.h=tAll.h=tConv.h=tRange.h=tAbs.h=tProof.h=1;
 tLogic.d3=tComb.d3=tNegSet.d3=tRange.d3=tAbs.d3=1;
-const TP={p:[tSet,tSet2,tNegSet,tProp,tCnt,tAll,tHyp,tConv,tCond,tRange,tAbs,tProof,tNeg,tLogic,tComb]};
+/* ───────── 대응도·대응표: 문제·보기·해설 안의 [[대응도 …]], [[대응표 …]]를 그림·표로 바꿔서 보여 줍니다 ─────────
+   [[대응도 X=1,2,3 Y=a,b,c,d 대응=1→a,2→b,3→b 이름=f 왼=X 오=Y]]   (이름·왼·오는 생략 가능)
+   [[대응표 x=1,2,3 f(x)=a,b,b]]                                      (줄은 2~3개까지) */
+const kv=s=>s.trim().split(/\s+/).map(t=>{const i=t.indexOf('=');return i>0?[t.slice(0,i),t.slice(i+1)]:null}).filter(Boolean);
+let dgN=0;
+function svgDg(s){
+ const o=Object.fromEntries(kv(s)),L=(o.X||'').split(',').filter(Boolean),Rr=(o.Y||'').split(',').filter(Boolean),
+ ps=(o['대응']||'').split(',').filter(Boolean).map(p=>p.split(/→|->|>/)),
+ nm=o['이름'],T=nm?34:30,h=Math.max(L.length,Rr.length)*26,cy=T+h/2+2,H=T+h+14,id='dm'+(dgN++),
+ ys=(k,len)=>cy+(k-(len-1)/2)*26,ly=x=>ys(L.indexOf(x),L.length),ry=x=>ys(Rr.indexOf(x),Rr.length);
+ let v=`<svg viewBox="0 0 220 ${H}" width="220" role="img" aria-label="대응도"><defs><marker id="${id}" markerUnits="userSpaceOnUse" viewBox="0 0 8 8" refX="7.5" refY="4" markerWidth="9" markerHeight="9" orient="auto"><path d="M0,0L8,4L0,8z" fill="currentColor"/></marker></defs>`;
+ v+=`<ellipse cx="50" cy="${cy}" rx="36" ry="${h/2+9}" stroke-width="1.6"/><ellipse cx="170" cy="${cy}" rx="36" ry="${h/2+9}" stroke-width="1.6"/>`;
+ v+=`<text class="sl" x="50" y="16" text-anchor="middle">${esc(o['왼']||'X')}</text><text class="sl" x="170" y="16" text-anchor="middle">${esc(o['오']||'Y')}</text>`;
+ if(nm)v+=`<text class="sl" x="110" y="12" text-anchor="middle">${esc(nm)}</text><line x1="86" y1="19" x2="134" y2="19" stroke-width="1.5" marker-end="url(#${id})"/>`;
+ L.forEach(x=>{v+=`<circle cx="66" cy="${ly(x)}" r="2.8" fill="currentColor"/><text x="57" y="${ly(x)+4.5}" text-anchor="end">${esc(x)}</text>`});
+ Rr.forEach(y=>{v+=`<circle cx="154" cy="${ry(y)}" r="2.8" fill="currentColor"/><text x="163" y="${ry(y)+4.5}">${esc(y)}</text>`});
+ ps.forEach(([x,y])=>{if(L.includes(x)&&Rr.includes(y))v+=`<line x1="70" y1="${ly(x)}" x2="150" y2="${ry(y)}" stroke-width="1.6" marker-end="url(#${id})"/>`});
+ return `<span class="dgm">${v}</svg></span>`}
+const tbl=s=>`<table class="tb">${kv(s).map(([k,v])=>`<tr><th>${esc(k)}</th>${v.split(',').map(c=>`<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</table>`;
+const fmt=s=>{const a=String(s).split(/(\[\[[^\]]*\]\])/);return a.map((t,i)=>{const m=t.match(/^\[\[(대응도|대응표)\s+([^\]]*)\]\]$/);if(m)return m[1]=='대응도'?svgDg(m[2]):tbl(m[2]);if(/^\[\[대응표/.test(a[i-1]||''))t=t.replace(/^\n/,'');if(/^\[\[대응표/.test(a[i+1]||''))t=t.replace(/\n$/,'');return esc(t)}).join('')};
+const hasDg=s=>/\[\[대응[도표]/.test(s);
+const DG=(L,Rr,ps,o={})=>`[[대응도 X=${L.join(',')} Y=${Rr.join(',')} 대응=${ps.map(p=>p[0]+'→'+p[1]).join(',')}${o.f?' 이름='+o.f:''}${o.l?' 왼='+o.l:''}${o.r?' 오='+o.r:''}]]`;
+
+/* ───────── 함수 단원 도우미 ───────── */
+const MN=v=>String(v).replace('-','−');
+const cf=(c,v)=>c==1?v:c==-1?'−'+v:MN(c)+v;
+const poly=(a,b,c)=>{let s=a?cf(a,'x²'):'';if(b)s+=(b>0&&s?'+':'')+cf(b,'x');if(c||!s)s+=(c>0&&s?'+':'')+MN(c);return s};
+const lin=(a,b)=>poly(0,a,b);
+const gcd=(a,b)=>b?gcd(b,a%b):Math.abs(a);
+const fr=(n,d=1)=>{const g=gcd(n,d)||1;n/=g;d/=g;if(d<0){n=-n;d=-d}return d==1?MN(n):MN(n)+'/'+d};
+const ABC='abcdefg',seq=n=>[...Array(n)].map((_,i)=>i+1),stS=a=>'{'+a.join(', ')+'}';
+const sg=(c,n)=>c>0?'+'+n:c<0?'−'+(-n):'';           // 부호 붙은 항 (c의 부호로 판단)
+function fill(c,cands,gen){const o=[String(c)];for(const x of cands){const s=String(x);if(!o.includes(s)&&o.length<4)o.push(s)}for(let k=1;o.length<4&&k<60;k++){const s=String(gen(k));if(!o.includes(s))o.push(s)}return o}
+const ng=v=>k=>MN(v+(k%2?(k+1)/2:-k/2));              // v±1, v±2 … 숫자 보기 채우기
+const inv=(a,b,v='x')=>a==1?v+(b>0?'−'+b:b<0?'+'+(-b):''):a==-1?'−'+v+(b>0?'+'+b:b<0?'−'+(-b):''):
+ a>0?(b?`(${v}${b>0?'−'+b:'+'+(-b)})/${a}`:`${v}/${a}`):(b?`(−${v}${b>0?'+'+b:'−'+(-b)})/${-a}`:`−${v}/${-a}`);   // y=ax+b의 역함수 식
+const OA=['①','②','③','④'];
+
+/* 함수 1: 대응도로 함수 판별 */
+function tfMap(){
+ const n=rnd(3,4),m=rnd(3,4),X=seq(n),Y=ABC.slice(0,m).split(''),key=p=>p.map(q=>q.join('')).sort().join(','),
+ good=()=>X.map(x=>[x,pick(Y)]),
+ bad=()=>{const p=good(),i=rnd(0,n-1);if(Math.random()<.5){const x=p[i][0];p.splice(i,1);return{p,r:`원소 ${x}에 대응하는 값이 없으므로`}}
+  const x=p[i][0];p.splice(i+1,0,[x,pick(Y.filter(v=>v!=p[i][1]))]);return{p,r:`원소 ${x}에 값이 두 개 대응하므로`}},
+ askBad=Math.random()<.55,nG=askBad?3:1,nB=askBad?1:3,seen=new Set(),GD=[],BD=[];
+ for(let t=0;(GD.length<nG||BD.length<nB)&&t<300;t++){
+  if(GD.length<nG){const p=good(),k=key(p);if(!seen.has(k)){seen.add(k);GD.push({p})}}
+  if(BD.length<nB){const b=bad(),k=key(b.p);if(!seen.has(k)){seen.add(k);BD.push(b)}}}
+ if(GD.length<nG||BD.length<nB)return tfMap();
+ const it=shuf([...GD,...BD]),cor=askBad?BD[0]:GD[0],ans=it.indexOf(cor);
+ const why=x=>`${OA[it.indexOf(x)]}번은 ${x.r} 함수가 아닙니다`;
+ const ex=askBad?`${why(BD[0])}.`:`${OA[ans]}번만 X의 모든 원소에 Y의 원소가 하나씩 대응합니다. ${BD.map(why).join('. ')}.`;
+ return{d:1,t:'mc',q:`집합 X=${stS(X)}에서 집합 Y=${stS(Y)}로의 대응을 그림으로 나타낸 것이다.\n다음 중 함수${askBad?'가 아닌':'인'} 것은?`,ch:it.map(x=>DG(X,Y,x.p)),ans,ex}}
+
+/* 함수 2: 대응도에서 치역·공역·함숫값 읽기 */
+function tfDom(){
+ const n=rnd(3,4),m=rnd(4,5),X=seq(n),Y=ABC.slice(0,m).split('');let f;
+ do f=X.map(()=>pick(Y));while(new Set(f).size<2||new Set(f).size==m);
+ const R=[...new Set(f)].sort(),t=rnd(0,2),k=pick(X),extra=pick(Y.filter(y=>!R.includes(y))),
+ dg=DG(X,Y,X.map((x,i)=>[x,f[i]]),{f:'f'}),hd='그림과 같은 함수 f: X→Y에서 ';let q,o,ex;
+ if(t==0){q=hd+'치역은?';o=fill(stS(R),[stS(Y),stS([...R,extra].sort()),R.length>1?stS(R.slice(1)):0,stS(X)].filter(Boolean),()=>stS(shuf(Y).slice(0,rnd(1,m-1)).sort()));
+  ex=`치역은 함숫값 전체의 집합입니다. 화살표가 닿는 Y의 원소는 ${stS(R)}입니다. (${stS(Y)}는 공역)`}
+ else if(t==1){const v=m-R.length;q=hd+'공역의 원소 중 치역에 속하지 않는 것은 몇 개인가?';o=fill(v,[R.length,v+1,n],k=>v+k+1);
+  ex=`공역은 ${stS(Y)}(${m}개), 치역은 ${stS(R)}(${R.length}개)이므로 ${v}개입니다.`}
+ else{q=hd+`f(${k})의 값은?`;o=fill(f[k-1],shuf(Y.filter(y=>y!=f[k-1])),()=>'?');ex=`원소 ${k}에서 출발한 화살표가 가리키는 값이 f(${k})=${f[k-1]}입니다.`}
+ if(o.length<4)return tfDom();
+ return mk(1,'mc',q+'\n'+dg,o,0,ex)}
+
+/* 함수 3: 대응도로 일대일함수·일대일대응·항등·상수 판별 */
+function tfType(){
+ const k=pick(['bij','bij','inj','id','const','gen','gen']);let n,m,X,Y,f;
+ if(k=='id'||k=='bij'){n=m=rnd(3,4);X=Y=seq(n);f=k=='id'?X.slice():shuf(X);if(k=='bij')while(f.every((v,i)=>v==X[i]))f=shuf(X)}
+ else{n=k=='inj'?3:rnd(3,4);m=k=='inj'?4:rnd(3,4);X=seq(n);Y=ABC.slice(0,m).split('');
+  f=k=='inj'?shuf(Y).slice(0,n):k=='const'?Array(n).fill(pick(Y)):X.map(()=>pick(Y));
+  if(k=='gen')while(new Set(f).size==n||new Set(f).size==1)f=X.map(()=>pick(Y))}
+ const R=[...new Set(f)].sort(),inj=R.length==n,ont=R.length==m,cst=R.length==1,
+ idn=X.length==Y.length&&X.every((x,i)=>String(x)==String(Y[i])&&String(f[i])==String(x)),
+ S=[['f는 일대일함수이다.',inj],['f는 일대일대응이다.',inj&&ont],['f는 항등함수이다.',idn],['f는 상수함수이다.',cst],['f의 치역과 공역이 같다.',ont],['f는 일대일함수가 아니다.',!inj]],
+ wantT=Math.random()<.6;let pk=null;
+ for(let t=0;t<300&&!pk;t++){const c=shuf(S).slice(0,4);if(c.filter(s=>s[1]==wantT).length==1)pk=c}
+ if(!pk)return tfType();
+ const cor=pk.find(s=>s[1]==wantT),dg=DG(X,Y,X.map((x,i)=>[x,f[i]]),{f:'f',l:'X',r:'Y'});
+ return mk(2,'mc',`그림과 같은 함수 f: X→Y에 대한 설명으로 ${wantT?'옳은':'옳지 않은'} 것은?\n${dg}`,[cor[0],...pk.filter(s=>s!=cor).map(s=>s[0])],0,
+  `이 함수의 치역은 ${stS(R)}이고 공역은 ${stS(Y)}입니다. ${inj?'서로 다른 원소에 서로 다른 값이 대응하므로 일대일함수':'같은 값에 대응하는 원소가 있으므로 일대일함수가 아니'}${inj?'이고':'고'}, 치역과 공역이 ${ont?'같습니다':'다릅니다'}. ${idn?'모든 원소가 자기 자신에 대응하므로 항등함수입니다.':cst?'모든 원소가 한 값에 대응하므로 상수함수입니다.':inj&&ont?'일대일함수이면서 치역과 공역이 같으므로 일대일대응입니다.':''}`)}
+tfType.h=1;
+
+/* 함수 4: 일차함수의 치역(닫힌 구간) */
+function tfRng(){
+ const a=pick([-3,-2,-1,1,2,3]),b=rnd(-5,5),p=rnd(-3,1),q=p+rnd(2,4),F=x=>a*x+b,lo=Math.min(F(p),F(q)),hi=Math.max(F(p),F(q)),
+ Rg=(l,h)=>`{y | ${MN(l)}≤y≤${MN(h)}}`,G2=x=>-a*x+b;
+ return mk(a>0?1:2,'mc',`정의역이 {x | ${MN(p)}≤x≤${MN(q)}}인 함수 f(x)=${lin(a,b)}의 치역은?`,
+  fill(Rg(lo,hi),[Rg(Math.min(G2(p),G2(q)),Math.max(G2(p),G2(q))),Rg(lo+1,hi+1),Rg(lo-1,hi-1),Rg(lo,hi+Math.abs(a))],k=>Rg(lo-k,hi+k)),0,
+  `${a>0?'x가 커지면 y도 커지므로':'x가 커지면 y는 작아지므로'} 양 끝값 f(${MN(p)})=${MN(F(p))}, f(${MN(q)})=${MN(F(q))}에서 치역의 범위가 정해집니다. 치역은 ${Rg(lo,hi)}입니다.`)}
+
+/* 함수 5: 이차함수의 치역(꼭짓점 위치 확인) */
+function tfRng2(){
+ const a=pick([1,1,-1]),h=rnd(-2,3),k=rnd(-4,4),inside=Math.random()<.7;let p,q;
+ if(inside){p=h-rnd(1,3);q=h+rnd(1,3)}else{p=h+rnd(1,2);q=p+rnd(1,3)}
+ const b=-2*a*h,c=a*h*h+k,F=x=>a*x*x+b*x+c,vs=[F(p),F(q),...(inside?[k]:[])],lo=Math.min(...vs),hi=Math.max(...vs),
+ Rg=(l,h2)=>`{y | ${MN(l)}≤y≤${MN(h2)}}`,e0=[Math.min(F(p),F(q)),Math.max(F(p),F(q))],
+ vf=h==0?(a<0?'−x²':'x²'):`${a<0?'−':''}(x${h>0?'−'+h:'+'+(-h)})²`;
+ const o=fill(Rg(lo,hi),[Rg(e0[0],e0[1]),a>0?Rg(k,e0[0]):Rg(e0[1],k),Rg(Math.min(F(p),F(q),k),Math.max(F(p),F(q))+1)],j=>Rg(lo-j,hi+j));
+ return mk(3,'mc',`정의역이 {x | ${MN(p)}≤x≤${MN(q)}}인 함수 f(x)=${poly(a,b,c)}의 치역은?`,o,0,
+  `f(x)=${vf}${sg(k,k)}이므로 꼭짓점은 (${MN(h)}, ${MN(k)})입니다. ${inside?`x=${MN(h)}인 꼭짓점이 정의역에 포함되므로 ${a>0?'최솟값':'최댓값'}은 ${MN(k)}이고, `:'꼭짓점이 정의역 밖이라 '}양 끝값은 f(${MN(p)})=${MN(F(p))}, f(${MN(q)})=${MN(F(q))}입니다. 따라서 치역은 ${Rg(lo,hi)}입니다.`)}
+tfRng2.h=tfRng2.d3=1;
+
+/* 함수 6: 정의역이 유한집합일 때 서로 같은 함수 */
+const SP=[['x',x=>x],['x²',x=>x*x],['x³',x=>x**3],['x⁴',x=>x**4],['|x|',Math.abs],['−x',x=>-x],['2x',x=>2*x],['x²+x',x=>x*x+x],['x²−x',x=>x*x-x],['2x²',x=>2*x*x],['−x²',x=>-x*x],['x+2',x=>x+2],['3x',x=>3*x]],
+ DS=[[-1,1],[-1,0,1],[0,1],[0,1,2],[-2,2],[-2,-1,1,2],[-1,1,2],[0,2],[-1,0],[1,2],[-2,0,2]];
+function tfSame(){
+ for(let t=0;t<400;t++){const D=pick(DS),f=pick(SP),eq=SP.filter(g=>g!==f&&D.every(x=>g[1](x)==f[1](x))),ne=SP.filter(g=>g!==f&&!eq.includes(g));
+  if(eq.length&&ne.length>=3){const c=pick(eq),w=shuf(ne).slice(0,3),vl=g=>D.map(x=>MN(g[1](x))).join(', ');
+   return mk(2,'mc',`정의역이 ${stS(D.map(MN))}인 함수 f(x)=${f[0]}와 서로 같은 함수는?`,[c,...w].map(g=>`g(x)=${g[0]}`),0,
+    `x=${D.map(MN).join(', ')}일 때 f의 함숫값은 ${vl(f)}이고, g(x)=${c[0]}의 함숫값도 ${vl(c)}이므로 모두 같습니다. 나머지는 함숫값이 다른 원소가 있어요.`)}}
+ return tfSame()}
+tfSame.h=1;
+
+/* 함수 7: 함수·일대일함수·일대일대응·상수함수의 개수 */
+function tfCnt(){
+ const t=rnd(0,5),Pm=(n,m)=>{let r=1;for(let i=0;i<m;i++)r*=n-i;return r};let m,n,v,w,ex,c;
+ if(t==0){m=rnd(2,4);n=rnd(2,4);w='함수의 개수';v=n**m;c=[m**n,m*n,n+m];ex=`X의 원소 ${m}개 각각에 Y의 원소 ${n}개 중 하나를 대응시키므로 ${n}^${m}=${v}(개)입니다.`}
+ else if(t==1){m=rnd(2,3);n=rnd(m+1,5);w='일대일함수의 개수';v=Pm(n,m);c=[n**m,m*n,Pm(n,m)+n];ex=`첫째 원소에 ${n}가지, 둘째에 ${n-1}가지${m==3?`, 셋째에 ${n-2}가지`:''}를 대응시키므로 ${v}(개)입니다.`}
+ else if(t==2){m=n=rnd(3,4);w='일대일대응의 개수';v=Pm(n,n);c=[n**n,n*n,v+n];ex=`${n}개 원소를 서로 다르게 짝지으므로 ${seq(n).reverse().join('×')}=${v}(개)입니다.`}
+ else if(t==3){m=rnd(2,4);n=rnd(2,5);w='상수함수의 개수';v=n;c=[n**m,m,n*m];ex=`상수함수는 모든 원소를 Y의 한 원소에 대응시키므로 Y의 원소의 개수 ${n}개와 같습니다.`}
+ else if(t==4){m=rnd(2,4);n=rnd(2,4);w='f(1)=a인 함수 f의 개수';v=n**(m-1);c=[n**m,m**(n-1),n*(m-1)];ex=`f(1)=a로 정해져 있으므로 나머지 ${m-1}개 원소에 각각 ${n}가지를 대응시켜 ${n}^${m-1}=${v}(개)입니다.`}
+ else{m=rnd(2,3);n=rnd(m+1,5);w='f(1)=a인 일대일함수 f의 개수';v=Pm(n-1,m-1);c=[Pm(n,m),(n-1)**(m-1),n*(m-1)];ex=`f(1)=a이면 나머지 ${m-1}개 원소는 a를 뺀 ${n-1}개 중에서 서로 다르게 대응시키므로 ${v}(개)입니다.`}
+ const X=seq(m),Y=ABC.slice(0,n).split('');
+ return mk(t<4?2:3,'mc',`두 집합 X=${stS(X)}, Y=${stS(Y)}에 대하여 ${t==4?'X에서 Y로의 함수 f 중 f(1)=a인 것의 개수는?':t==5?'X에서 Y로의 일대일함수 f 중 f(1)=a인 것의 개수는?':'X에서 Y로의 '+w+'는?'}`,fill(v,c.filter(x=>x>0),k=>k%2?v+(k+1)/2:Math.max(1,v-k/2)),0,ex)}
+tfCnt.h=1;
+
+/* 함수 8: 일대일대응이 되도록 하는 상수 */
+function tfOne(){
+ const neg=Math.random()<.4,a=neg?pick([-3,-2,-1]):pick([1,2,3]),b=rnd(-4,4),p=rnd(-2,1),q=p+rnd(1,3),F=x=>a*x+b,lo=Math.min(F(p),F(q)),hi=Math.max(F(p),F(q)),v=a+b;
+ return mk(neg?3:2,'mc',`정의역이 {x | ${MN(p)}≤x≤${MN(q)}}, 공역이 {y | ${MN(lo)}≤y≤${MN(hi)}}인 함수 f(x)=ax+b가 일대일대응일 때, a+b의 값은?\n(단, a${neg?'<':'>'}0이고 a, b는 상수)`,
+  fill(MN(v),[MN(a-b),MN(-a+b),MN(-a-b),MN(a*b)],ng(v)),0,
+  `a${neg?'<':'>'}0이므로 ${neg?'감소':'증가'}함수입니다. 일대일대응이 되려면 f(${MN(p)})=${MN(neg?hi:lo)}, f(${MN(q)})=${MN(neg?lo:hi)}이어야 해요. 연립하면 a=${MN(a)}, b=${MN(b)}이므로 a+b=${MN(v)}입니다.`)}
+tfOne.h=1;
+
+/* 함수 9: 합성함수의 함숫값 (기본) */
+function tfCV(){
+ const t=rnd(0,3),a=pick([-3,-2,-1,1,2,3]),b=rnd(-4,4),c=pick([-3,-2,-1,1,2,3]),d=rnd(-4,4),k=rnd(-3,3),
+ f=x=>a*x+b,fs=`f(x)=${lin(a,b)}`;let gs,g,q,v,w,ex,dd=1;
+ if(t==0){g=x=>c*x+d;gs=`g(x)=${lin(c,d)}`;q=`(g∘f)(${MN(k)})`;v=g(f(k));w=f(g(k));ex=`(g∘f)(${MN(k)})=g(f(${MN(k)}))=g(${MN(f(k))})=${MN(v)}`}
+ else if(t==1){g=x=>x*x+d;gs=`g(x)=${poly(1,0,d)}`;q=`(g∘f)(${MN(k)})`;v=g(f(k));w=f(g(k));ex=`(g∘f)(${MN(k)})=g(f(${MN(k)}))=g(${MN(f(k))})=${MN(v)}`;dd=2}
+ else if(t==2){g=x=>x*x+d;gs=`g(x)=${poly(1,0,d)}`;q=`(f∘g)(${MN(k)})`;v=f(g(k));w=g(f(k));ex=`(f∘g)(${MN(k)})=f(g(${MN(k)}))=f(${MN(g(k))})=${MN(v)}`;dd=2}
+ else{q=`(f∘f)(${MN(k)})`;v=f(f(k));w=f(k);ex=`(f∘f)(${MN(k)})=f(f(${MN(k)}))=f(${MN(f(k))})=${MN(v)}`}
+ return mk(dd,'mc',t==3?`함수 ${fs}에 대하여 ${q}의 값은?`:`두 함수 ${fs}, ${gs}에 대하여 ${q}의 값은?`,
+  fill(MN(v),[MN(w),MN(t==3?2*f(k):f(k)+g(k)),MN(-v)],ng(v)),0,ex+'입니다. (합성은 안쪽 함수부터 차례로 계산해요.)')}
+
+/* 함수 10: 합성함수의 함숫값 (심화: 합과 세 함수 합성) */
+function tfCV2(){
+ const a=pick([-2,-1,1,2,3]),b=rnd(-3,3),c=pick([-2,-1,1,2]),d=rnd(-3,3),e=rnd(-3,3),k=rnd(-2,2),k2=rnd(-2,2),f=x=>a*x+b,g=x=>c*x+d,h=x=>x*x+e;
+ if(Math.random()<.5){const v=g(f(k))+f(g(k2));
+  return mk(2,'mc',`두 함수 f(x)=${lin(a,b)}, g(x)=${lin(c,d)}에 대하여 (g∘f)(${MN(k)})+(f∘g)(${MN(k2)})의 값은?`,
+   fill(MN(v),[MN(f(g(k))+g(f(k2))),MN(g(f(k))-f(g(k2))),MN(f(k)+g(k2))],ng(v)),0,
+   `(g∘f)(${MN(k)})=g(${MN(f(k))})=${MN(g(f(k)))}, (f∘g)(${MN(k2)})=f(${MN(g(k2))})=${MN(f(g(k2)))}이므로 합은 ${MN(v)}입니다.`)}
+ const v=h(g(f(k)));
+ return mk(3,'mc',`세 함수 f(x)=${lin(a,b)}, g(x)=${lin(c,d)}, h(x)=${poly(1,0,e)}에 대하여 (h∘g∘f)(${MN(k)})의 값은?`,
+  fill(MN(v),[MN(f(g(h(k)))),MN(g(h(f(k)))),MN(h(f(g(k))))],ng(v)),0,
+  `(h∘g∘f)(${MN(k)})=h(g(f(${MN(k)})))이므로 f(${MN(k)})=${MN(f(k))}, g(${MN(f(k))})=${MN(g(f(k)))}, h(${MN(g(f(k)))})=${MN(v)}입니다. 안쪽 함수 f부터 차례로 계산해요.`)}
+tfCV2.h=1;
+
+/* 함수 11: 합성함수의 식 */
+function tfCE(){
+ const a=pick([-3,-2,-1,1,2,3]),b=rnd(-4,4),c=pick([-3,-2,2,3]),d=rnd(-4,4),quad=Math.random()<.5,gf=Math.random()<.5;
+ // f(x)=ax+b, g(x)=cx+d 또는 g(x)=x²+d
+ const fs=`f(x)=${lin(a,b)}`,gs=quad?`g(x)=${poly(1,0,d)}`:`g(x)=${lin(c,d)}`;
+ const gOf=quad?[a*a,2*a*b,b*b+d]:[0,c*a,c*b+d],fOg=quad?[a,0,a*d+b]:[0,a*c,a*d+b];
+ const P=z=>poly(z[0],z[1],z[2]),good=gf?gOf:fOg,swap=gf?fOg:gOf;
+ const bad=quad?(gf?[[a*a,0,b*b+d],[a*a,a*b,b*b+d],[a*a,2*a*b,b*b-d]]:[[a,0,a*d-b],[a*a,0,d+b],[a,0,a*d]]):(gf?[[0,c*a,c*b-d],[0,c*a,b+d],[0,c+a,c*b+d]]:[[0,a*c,a*d-b],[0,a*c,d+b],[0,a+c,a*d+b]]);
+ const q=gf?'(g∘f)(x)':'(f∘g)(x)',ex=gf?`(g∘f)(x)=g(f(x))=g(${lin(a,b)})=${P(gOf)}`:`(f∘g)(x)=f(g(x))=f(${quad?poly(1,0,d):lin(c,d)})=${P(fOg)}`;
+ return mk(2,'mc',`두 함수 ${fs}, ${gs}에 대하여 ${q}는?`,fill(P(good),[P(swap),...bad.map(P)],k=>P([good[0],good[1],good[2]+k])),0,
+  ex+(quad&&gf?'입니다. (ax+b)²을 전개할 때 가운데 항 2abx를 빠뜨리지 않아야 해요.':'입니다.'))}
+tfCE.h=1;
+
+/* 함수 12: 합성함수의 조건에서 함수 구하기 */
+function tfCU(){
+ const a=pick([-3,-2,-1,1,2,3]),b=rnd(-4,4),p=pick([-3,-2,-1,1,2,3]),q=rnd(-4,4),gf=Math.random()<.5;
+ const hh=gf?[p*a,p*b+q]:[a*p,a*q+b],P=z=>lin(z[0],z[1]);
+ const o=gf?fill('g(x)='+lin(p,q),['g(x)='+lin(p*a,q),'g(x)='+lin(p,p*b+q),'g(x)='+lin(p,-q),'g(x)='+lin(q,p)],k=>'g(x)='+lin(p,q+k)):
+  fill('g(x)='+lin(p,q),['g(x)='+lin(a*p,q),'g(x)='+lin(p,a*q+b),'g(x)='+lin(p,-q),'g(x)='+lin(q,p)],k=>'g(x)='+lin(p,q+k));
+ return mk(3,'mc',`함수 f(x)=${lin(a,b)}에 대하여 ${gf?'(g∘f)':'(f∘g)'}(x)=${P(hh)}를 만족시키는 일차함수 g(x)는?`,o,0,
+  gf?`g(x)=px+q로 놓으면 (g∘f)(x)=g(${lin(a,b)})=p(${lin(a,b)})+q=${P(hh)}입니다. 계수를 비교하면 p=${MN(p)}, q=${MN(q)}이므로 g(x)=${lin(p,q)}입니다.`:
+  `g(x)=px+q로 놓으면 (f∘g)(x)=f(g(x))=${a==1?'':a==-1?'−':MN(a)}(px+q)${sg(b,b)}입니다. 이것이 ${P(hh)}와 같으므로 p=${MN(p)}, q=${MN(q)}이고 g(x)=${lin(p,q)}입니다.`)}
+tfCU.h=tfCU.d3=1;
+
+/* 함수 13: 대응도 두 개로 합성함수 값 */
+function tfDiaComp(){
+ const X=seq(4),rf=()=>X.map(x=>[x,rnd(1,4)]),f=rf(),g=rf(),F=x=>f[x-1][1],Gv=x=>g[x-1][1],k=rnd(1,4),k2=rnd(1,4),t=rnd(0,3);let q,v,ex,o;
+ if(t==0){q=`(g∘f)(${k})`;v=Gv(F(k));ex=`(g∘f)(${k})=g(f(${k}))=g(${F(k)})=${v}`}
+ else if(t==1){q=`(f∘g)(${k})`;v=F(Gv(k));ex=`(f∘g)(${k})=f(g(${k}))=f(${Gv(k)})=${v}`}
+ else if(t==2){q=`(f∘f)(${k})`;v=F(F(k));ex=`(f∘f)(${k})=f(f(${k}))=f(${F(k)})=${v}`}
+ else{q=`(g∘f)(${k})+(f∘g)(${k2})`;v=Gv(F(k))+F(Gv(k2));ex=`(g∘f)(${k})=g(${F(k)})=${Gv(F(k))}, (f∘g)(${k2})=f(${Gv(k2)})=${F(Gv(k2))}이므로 합은 ${v}`}
+ o=t<3?fill(v,[1,2,3,4],ng(v)):fill(v,[v+1,v-1,Gv(F(k))],ng(v));
+ return mk(2,'mc',`그림은 집합 X=${stS(X)}에서 X로의 두 함수 f, g를 나타낸 것이다.\n${DG(X,X,f,{f:'f',l:'X',r:'X'})}${DG(X,X,g,{f:'g',l:'X',r:'X'})}\n${q}의 값은?`,o,0,ex+'입니다. 안쪽 함수의 화살표부터 따라가세요.')}
+tfDiaComp.h=1;
+
+/* 함수 14: 역함수의 함숫값 (일차함수) */
+function tfIV(){
+ const a=pick([-4,-3,-2,-1,1,2,3,4]),b=rnd(-6,6),x0=rnd(-4,4),k=a*x0+b,f=x=>a*x+b;
+ return mk(1,'mc',`함수 f(x)=${lin(a,b)}에 대하여 f⁻¹(${MN(k)})의 값은?`,fill(MN(x0),[MN(f(k)),MN(-x0),fr(k+b,a)],ng(x0)),0,
+  `f⁻¹(${MN(k)})=m이라 하면 f(m)=${MN(k)}이므로 ${lin(a,b)}에서 x=m을 대입해 ${lin(a,b).replace(/x/g,'m')}=${MN(k)}, m=${MN(x0)}입니다.`)}
+
+/* 함수 15: 일차함수의 역함수 구하기 */
+function tfIE(){
+ const a=pick([-3,-2,-1,2,3,4]),b=pick([-6,-5,-4,-3,-2,-1,1,2,3,4,5,6]);
+ return mk(2,'mc',`함수 y=${lin(a,b)}의 역함수는?`,fill('y='+inv(a,b),['y='+inv(a,-b),'y='+inv(-a,b),'y='+lin(a,-b),'y='+lin(a,b)],k=>'y='+inv(a,b+k)),0,
+  `y=${lin(a,b)}에서 x를 y로 나타내면 x=${inv(a,b,'y')}입니다. x와 y를 서로 바꾸면 역함수는 y=${inv(a,b)}입니다.`)}
+tfIE.h=1;
+
+/* 함수 16: 대응도로 역함수의 함숫값 */
+function tfIDia(){
+ const X=seq(4),Y=['a','b','c','d'],f=shuf(Y),y=pick(Y),x=X[f.indexOf(y)];
+ return mk(1,'mc',`그림과 같은 일대일대응 f: X→Y에 대하여 f⁻¹(${y})의 값은?\n${DG(X,Y,X.map((v,i)=>[v,f[i]]),{f:'f'})}`,[1,2,3,4].map(String),x-1,
+  `f⁻¹(${y})=m이라 하면 f(m)=${y}입니다. 그림에서 ${y}로 향하는 화살표의 출발점이 ${x}이므로 f⁻¹(${y})=${x}입니다.`)}
+
+/* 함수 17: 대응도로 역함수 계산 (합·합성) */
+function tfIDia2(){
+ const X=seq(4),f=shuf(X),F=x=>f[x-1],I=y=>f.indexOf(y)+1,p=rnd(1,4),q=rnd(1,4),t=rnd(0,2);let s,v,ex,o;
+ if(t==0){s=`f⁻¹(${p})+(f∘f)(${q})`;v=I(p)+F(F(q));ex=`f⁻¹(${p})=${I(p)} (f(${I(p)})=${p}이므로), (f∘f)(${q})=f(f(${q}))=f(${F(q)})=${F(F(q))}이므로 합은 ${v}`}
+ else if(t==1){s=`(f∘f⁻¹)(${p})+f⁻¹(${q})`;v=p+I(q);ex=`(f∘f⁻¹)(${p})=${p}, f⁻¹(${q})=${I(q)} (f(${I(q)})=${q}이므로)이므로 합은 ${v}`}
+ else{s=`(f⁻¹∘f⁻¹)(${p})`;v=I(I(p));ex=`f⁻¹(${p})=${I(p)}, f⁻¹(${I(p)})=${I(I(p))}이므로 (f⁻¹∘f⁻¹)(${p})=${v}`}
+ o=t<2?fill(v,[v+1,v-1,F(p)+F(F(q))],ng(v)):fill(v,[1,2,3,4],ng(v));
+ return mk(2,'mc',`그림과 같은 일대일대응 f: X→X에 대하여 ${s}의 값은?\n${DG(X,X,X.map(x=>[x,F(x)]),{f:'f',l:'X',r:'X'})}`,o,0,ex+'입니다.')}
+tfIDia2.h=1;
+
+/* 함수 18: 합성함수의 역함수 */
+function tfIC(){
+ const a=pick([-3,-2,-1,1,2,3]),b=rnd(-4,4),c=pick([-3,-2,-1,1,2,3]),d=rnd(-4,4),x0=rnd(-3,3),f=x=>a*x+b,g=x=>c*x+d,k=f(g(x0)),A=a*c,B=a*d+b;
+ return mk(3,'mc',`두 함수 f(x)=${lin(a,b)}, g(x)=${lin(c,d)}에 대하여 (f∘g)⁻¹(${MN(k)})의 값은?`,
+  fill(MN(x0),[fr(k-d-b*c,a*c),fr(k-d,c),fr(k-b,a)],ng(x0)),0,
+  `(f∘g)⁻¹(${MN(k)})=m이라 하면 (f∘g)(m)=${MN(k)}입니다. (f∘g)(x)=f(g(x))=${lin(A,B)}이므로 ${lin(A,B).replace(/x/g,'m')}=${MN(k)}에서 m=${MN(x0)}입니다.`)}
+tfIC.h=tfIC.d3=1;
+
+/* 함수 19: f=f⁻¹ 조건 */
+function tfSelf(){
+ const c=rnd(1,5),d=rnd(0,6),v=c+d-1;
+ return mk(3,'mc',`함수 f(x)=ax+b (a≠1)가 f=f⁻¹를 만족시키고 f(${c})=${d}일 때, a+b의 값은? (단, a, b는 상수)`,fill(MN(v),[MN(c+d+1),MN(c-d-1),MN(c+d)],ng(v)),0,
+  `f=f⁻¹이면 (f∘f)(x)=x입니다. f(f(x))=a²x+ab+b=x에서 a²=1, ab+b=0이고 a≠1이므로 a=−1입니다. f(${c})=${d}에서 −${c}+b=${d}이므로 b=${c+d}, a+b=${MN(v)}입니다.`)}
+tfSelf.h=tfSelf.d3=1;
+
+/* 함수 20: 그래프가 지나는 점과 역함수 */
+function tfSym(){
+ const a=rnd(-5,5),b=rnd(-5,5);if(a==b||(a==0&&b==0))return tfSym();
+ const P=(x,y)=>`(${MN(x)}, ${MN(y)})`,t=rnd(0,1);
+ return mk(1,'mc',t==0?`함수 f의 역함수 f⁻¹가 존재하고 y=f(x)의 그래프가 점 ${P(a,b)}를 지날 때, y=f⁻¹(x)의 그래프가 반드시 지나는 점은?`:
+  `함수 f의 역함수 f⁻¹가 존재하고 f⁻¹(${MN(a)})=${MN(b)}일 때, y=f(x)의 그래프가 반드시 지나는 점은?`,
+  t==0?fill(P(b,a),[P(a,b),P(-a,-b),P(-b,a),P(b,-a)],k=>P(b+k,a)):fill(P(b,a),[P(a,b),P(-b,-a),P(-b,a),P(b,-a)],k=>P(b,a+k)),0,
+  t==0?`f(${MN(a)})=${MN(b)}이므로 f⁻¹(${MN(b)})=${MN(a)}입니다. 따라서 y=f⁻¹(x)의 그래프는 점 ${P(b,a)}를 지나요. (x좌표와 y좌표를 서로 바꾼 점)`:
+  `f⁻¹(${MN(a)})=${MN(b)}이면 f(${MN(b)})=${MN(a)}이므로 y=f(x)의 그래프는 점 ${P(b,a)}를 지납니다.`)}
+
+/* 함수 21: 함수와 그 역함수의 그래프의 교점 */
+function tfSym2(){
+ const a=pick([2,3,4,-2,-3]),t=pick([-4,-3,-2,-1,1,2,3,4,5]),b=t*(1-a),P=(x,y)=>`(${MN(x)}, ${MN(y)})`;
+ return mk(3,'mc',`함수 f(x)=${lin(a,b)}의 그래프와 그 역함수 y=f⁻¹(x)의 그래프가 만나는 점의 좌표는?`,
+  fill(P(t,t),[P(-t,-t),P(t,0),P(0,t),P(b,b)],k=>P(t+k,t+k)),0,
+  `두 그래프는 직선 y=x에 대하여 대칭이므로 교점은 y=x 위에 있습니다. ${lin(a,b)}=x에서 x=${MN(t)}이므로 교점은 ${P(t,t)}입니다.`)}
+tfSym2.h=tfSym2.d3=1;
+
+const TPF=[tfMap,tfDom,tfType,tfRng,tfRng2,tfSame,tfCnt,tfOne,tfCV,tfCV2,tfCE,tfCU,tfDiaComp,tfIV,tfIE,tfIDia,tfIDia2,tfIC,tfSelf,tfSym,tfSym2];
+const TP={p:[tSet,tSet2,tNegSet,tProp,tCnt,tAll,tHyp,tConv,tCond,tRange,tAbs,tProof,tNeg,tLogic,tComb],f:TPF};
 
 const tier=f=>f.d3?3:f.h?2:1;
 function wt(c){const r=G.run,w=r<3?[3,1,0]:r<7?[1,2,1]:[0,1,2],o=c.flatMap(f=>Array(w[tier(f)-1]).fill(f));return o.length?o:c}
@@ -300,13 +564,13 @@ function next(){if(G.fin)return;G.q=pickQ();G.lock=false;G.done=false;const q=G.
  R(`<div class="bar"><span>${M[G.mode].e} ${M[G.mode].n}</span><span>점수 <b id="sc">${G.score}</b></span></div>
 <div class="bar s"><span id="cb">${G.streak>1?'🔥 '+G.streak+'연속':''}</span><span id="st">${stat()}</span></div>
 <div class="pg"><i id="pg"></i></div>
-<div class="card"><div class="s">${['','쉬움','보통','어려움'][q.d]}${location.hash=='#debug'?' · '+(q.tn||'엑셀'):''}</div><div style="font-size:19px;font-weight:700;white-space:pre-line">${esc(q.q)}</div></div>
-${q.ch.map((c,i)=>`<button class="b g" data-a="ans" data-v="${i}">${q.t=='ox'?'':'①②③④'[i]+' '}${esc(c)}</button>`).join('')}
+<div class="card"><div class="s">${['','쉬움','보통','어려움'][q.d]}${location.hash=='#debug'?' · '+(q.tn||'엑셀'):''}</div><div class="qq" style="font-size:19px;font-weight:700;white-space:pre-line">${fmt(q.q)}</div></div>
+${(dg=>(dg?'<div class="dgrid">':'')+q.ch.map((c,i)=>`<button class="b g${dg?' dc':''}" data-a="ans" data-v="${i}">${q.t=='ox'?'':dg?`<span class="cn">${'①②③④'[i]}</span>`:'①②③④'[i]+' '}${fmt(c)}</button>`).join('')+(dg?'</div>':''))(q.ch.some(hasDg))}
 <div id="fb"></div><button class="b g" data-a="quit" style="margin-top:24px">그만하기</button>`);setPg()}
 function ans(i){
  if(G.lock||G.fin)return;G.lock=true;const q=G.q,ok=i==q.ans,bs=A.querySelectorAll('[data-a=ans]');G.total++;
  if(bs[i])bs[i].classList.add(ok?'ok':'bad');if(!ok)bs[q.ans].classList.add('ok');
- let msg=ok?'🎉 '+pick(['훌륭해요!','좋아요!','잘했어요!','완벽해요!']):(i<0?'⏰ 시간 초과! ':'🥲 '+pick(['괜찮아요, 다음엔 맞힐 수 있어요!','아쉬워요, 정답을 확인해요!','실수는 성장의 지름길!'])+' ')+'정답은 '+q.ch[q.ans]+(!ok&&G.mode=='time'&&G.score>0?' · −'+Math.min(G.score,150)+'점':'');
+ let msg=ok?'🎉 '+pick(['훌륭해요!','좋아요!','잘했어요!','완벽해요!']):(i<0?'⏰ 시간 초과! ':'🥲 '+pick(['괜찮아요, 다음엔 맞힐 수 있어요!','아쉬워요, 정답을 확인해요!','실수는 성장의 지름길!'])+' ')+'정답은 '+(hasDg(q.ch[q.ans])?'①②③④'[q.ans]+'번':q.ch[q.ans])+(!ok&&G.mode=='time'&&G.score>0?' · −'+Math.min(G.score,150)+'점':'');
  track(ok,q);if(ok){G.correct++;G.streak++;G.score+=500+({3:250,5:500,10:1500}[G.streak]||0)}
  else{G.streak=0;G.wrong.push(q);if(G.mode=='boss')G.lives--;if(G.mode=='time'){const l=Math.min(G.score,150);G.score-=l;if(l)minus(l)}}
  if(G.mode=='chal'&&G.streak>=10){G.lv++;G.streak=0;msg='레벨 업! Lv.'+G.lv}
@@ -315,8 +579,8 @@ function ans(i){
  document.getElementById('sc').textContent=G.score;
  document.getElementById('cb').innerHTML=G.streak>1?`<span class="pop">🔥 ${G.streak}연속</span>`:'';
  document.getElementById('st').textContent=stat();setPg();
- if(m=='time'){setTimeout(next,ok?350:3000);document.getElementById('fb').innerHTML=ok?`<p><b>${esc(msg)}</b></p>`:`<div class="card"><b>${esc(msg)}</b><br><span class="s">${esc(q.ex)}</span><div class="pg" style="margin-top:10px"><i id="wb" style="width:100%;transition:width 3s linear;background:#ef6a6a"></i></div></div>`;if(!ok)setTimeout(()=>{const w=document.getElementById('wb');if(w)w.style.width='0'},30)}
- else document.getElementById('fb').innerHTML=`<div class="card"><b>${esc(msg)}</b><br><span class="s">${esc(q.ex)}</span></div><button class="b" data-a="nx">${G.done?'결과 보기':'다음 문제'}</button>`}
+ if(m=='time'){setTimeout(next,ok?350:3000);document.getElementById('fb').innerHTML=ok?`<p><b>${esc(msg)}</b></p>`:`<div class="card"><b>${esc(msg)}</b><br><span class="s">${fmt(q.ex)}</span><div class="pg" style="margin-top:10px"><i id="wb" style="width:100%;transition:width 3s linear;background:#ef6a6a"></i></div></div>`;if(!ok)setTimeout(()=>{const w=document.getElementById('wb');if(w)w.style.width='0'},30)}
+ else document.getElementById('fb').innerHTML=`<div class="card"><b>${esc(msg)}</b><br><span class="s">${fmt(q.ex)}</span></div><button class="b" data-a="nx">${G.done?'결과 보기':'다음 문제'}</button>`}
 async function save(){
  const r={sid:name,unit:UNIT,score:G.score,n:G.correct,t:Date.now()},l=LS.g('mj_sc',[]);l.push(r);LS.s('mj_sc',l.slice(-200));
  let st='인증';try{if(db){await au.authStateReady();st='읽기';const ref=doc(db,'rank',UNIT+'_'+name),o=await getDoc(ref);st='쓰기';if(!o.exists()||o.data().score<r.score)await setDoc(ref,r);return true}}catch(e){ERR=st+' '+(e.code||String(e))}return false}
@@ -324,7 +588,7 @@ async function finish(){
  if(G.fin)return;G.fin=1;clearInterval(G.iv);let note='';
  if(G.mode=='time'&&G.total>0)note=(await save())?'랭킹에 기록했어요.':'이 기기에만 기록했어요. (오류: '+ERR+')';
  const win=G.mode=='boss'&&G.correct>=5,nw=applyGame(),prog=`<div class="card">⭐ +${G.xp} XP · Lv.${lv(UD.xp)} · ${UD.dayN>=5?'🔥 오늘 스트릭 달성!':'오늘 '+UD.dayN+'/5문제'}${nw.map(a=>`<br>🏅 새 업적! ${a[1]} <b>${a[2]}</b> +${ACC[a[0]]||0}🪙`).join('')}${coinLines()}</div>`;
- R(`<h1>${win?'🏆 ':'🎉 '}${G.mode=='boss'?(win?'보스 클리어!':'보스전 종료'):'결과'}</h1><div class="card"><div style="font-size:34px;font-weight:900">${G.score}점</div><div class="sub" style="margin:0">정답 ${G.correct} / ${G.total}${G.mode=='chal'?' · Lv.'+G.lv:''}</div>${note?`<p style="margin:8px 0 0">${note}</p>`:''}</div>${prog}${G.wrong.length?`<div class="card"><b>틀린 문제</b>${G.wrong.slice(0,8).map(q=>`<p>${esc(q.q)}<br><span class="s">정답: ${esc(q.ch[q.ans])} — ${esc(q.ex)}</span></p>`).join('')}</div>`:''}<button class="b" data-a="start" data-v="${G.mode}">다시 하기</button><button class="b g" data-a="rank">랭킹 보기</button><button class="b g" data-a="menu">처음으로</button>`)}
+ R(`<h1>${win?'🏆 ':'🎉 '}${G.mode=='boss'?(win?'보스 클리어!':'보스전 종료'):'결과'}</h1><div class="card"><div style="font-size:34px;font-weight:900">${G.score}점</div><div class="sub" style="margin:0">정답 ${G.correct} / ${G.total}${G.mode=='chal'?' · Lv.'+G.lv:''}</div>${note?`<p style="margin:8px 0 0">${note}</p>`:''}</div>${prog}${G.wrong.length?`<div class="card"><b>틀린 문제</b>${G.wrong.slice(0,8).map(q=>`<p class="qq" style="white-space:pre-line">${fmt(q.q)}<br><span class="s">정답: ${hasDg(q.ch[q.ans])?'①②③④'[q.ans]+'번 — ':fmt(q.ch[q.ans])+' — '}${fmt(q.ex)}</span></p>`).join('')}</div>`:''}<button class="b" data-a="start" data-v="${G.mode}">다시 하기</button><button class="b g" data-a="rank">랭킹 보기</button><button class="b g" data-a="menu">처음으로</button>`)}
 async function rank(){
  clearInterval(G&&G.iv);R('<h1>🏆 랭킹</h1><p class="sub">불러오는 중…</p>');let rows=[],shared=false;
  try{if(db){const q=await getDocs(query(collection(db,'rank'),where('unit','==',UNIT)));rows=q.docs.map(d=>d.data());shared=true}}catch(e){ERR=e.code||String(e)}
