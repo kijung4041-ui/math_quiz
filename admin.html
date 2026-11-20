@@ -1,5 +1,5 @@
 <!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>교사용 · 수학 챌린지</title><script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script><script defer src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<style>*{box-sizing:border-box}body{margin:0;background:#f3f5fa;color:#1f2540;font:16px/1.5 system-ui,'Noto Sans KR',sans-serif;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}.w{max-width:1100px;margin:0 auto;padding:20px 16px 40px}.c{background:#fff;border:1px solid #d9deee;border-radius:12px;padding:16px;margin:12px 0}input{width:100%;font:inherit;padding:12px;border:1px solid #c5cce2;border-radius:8px;margin:6px 0 12px}button{font:inherit;padding:10px 14px;border-radius:8px;border:1px solid #c5cce2;background:#fff;cursor:pointer;margin:4px 6px 4px 0}button.p{background:#3b4fd6;color:#fff;border-color:#3b4fd6}table{width:100%;border-collapse:collapse}td,th{padding:8px;border-bottom:1px solid #e6e9f5;text-align:left}.r{overflow-x:auto}.s{color:#5b6585;font-size:14px}.nv{display:flex;gap:8px;margin:8px 0 12px}.nv button.p{background:#3b4fd6;color:#fff;border-color:#3b4fd6}.fl2{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0}.fl2 select,#so{font:inherit;padding:8px;border-radius:8px;border:1px solid #c5cce2}
+<style>*{box-sizing:border-box}body{margin:0;background:#f3f5fa;color:#1f2540;font:16px/1.5 system-ui,'Noto Sans KR',sans-serif;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}.w{max-width:1100px;margin:0 auto;padding:20px 16px 40px}.c{background:#fff;border:1px solid #d9deee;border-radius:12px;padding:16px;margin:12px 0}input{width:100%;font:inherit;padding:12px;border:1px solid #c5cce2;border-radius:8px;margin:6px 0 12px}button{font:inherit;padding:10px 14px;border-radius:8px;border:1px solid #c5cce2;background:#fff;cursor:pointer;margin:4px 6px 4px 0}button.p{background:#3b4fd6;color:#fff;border-color:#3b4fd6}table{width:100%;border-collapse:collapse}td,th{padding:8px;border-bottom:1px solid #e6e9f5;text-align:left}.r{overflow-x:auto}.s{color:#5b6585;font-size:14px}.nv{display:flex;gap:8px;margin:8px 0 12px}.nv button.p{background:#3b4fd6;color:#fff;border-color:#3b4fd6}.fl2{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0}.ut{flex-wrap:wrap}.rk{font-size:14px}.rk th,.rk td{white-space:nowrap;padding:8px 4px}.rk td button{padding:4px 8px;margin:0;font-size:13px}.rc{padding:12px}.fl2 select,#so{font:inherit;padding:8px;border-radius:8px;border:1px solid #c5cce2}
 .cd{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}.k{background:#fff;border:1px solid #d9deee;border-radius:12px;padding:14px;text-align:center;color:#5b6585}.k b{display:block;font-size:30px;color:#1f2540}
 .gr{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:12px}.gr .c{margin:0}.gr canvas,#dt canvas{max-height:280px}
 .ht td{width:34px;height:28px;text-align:center;font-size:11px;padding:0;border:1px solid #fff}.ht th{font-size:11px;font-weight:400;padding:2px 6px;white-space:nowrap}.ht th.v div{writing-mode:vertical-rl;max-height:170px;margin:auto}
@@ -15,13 +15,25 @@ const app=initializeApp(cfg),db=getFirestore(app),au=getAuth(app),A=document.get
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function login(m=''){A.innerHTML=`<h1>🍎 교사용 관리</h1><div class="c"><label>이메일</label><input id="em" type="email"><label>비밀번호</label><input id="pw" type="password"><button class="p" id="go">로그인</button><p class="s">${m}</p></div>`;
  $('go').onclick=async()=>{try{await signInWithEmailAndPassword(au,$('em').value.trim(),$('pw').value)}catch(e){login('로그인에 실패했어요.')}}}
-async function board(m=''){A.innerHTML='<h1>🍎 교사용 관리</h1><p>불러오는 중…</p>';let rows=[];
- try{rows=(await getDocs(collection(db,'rank'))).docs.map(d=>({id:d.id,...d.data()}))}catch(e){m='불러오기 실패 ('+(e.code||e)+')'}
- rows.sort((a,b)=>a.unit>b.unit?1:a.unit<b.unit?-1:b.score-a.score);
- A.innerHTML=`${NAV('b')}<p class="s">${m}</p><div class="c"><b>랭킹 (학번별 최고 점수, 총 ${rows.length}명)</b><div class="r"><table><tr><th>순위</th><th>단원</th><th>학번</th><th>점수</th><th>정답</th><th>기록 시각</th><th></th></tr>${rows.map((r,i)=>`<tr><td>${i+1}</td><td>${{p:'명제',f:'함수',r:'유리·무리'}[r.unit]||r.unit}</td><td>${esc(r.sid)}</td><td>${r.score}</td><td>${r.n}</td><td>${new Date(r.t).toLocaleString('ko-KR')}</td><td><button data-d="${esc(r.id)}">삭제</button></td></tr>`).join('')}</table></div></div>
-<button id="rf">새로고침</button><button id="rs">랭킹 전체 초기화</button><button id="lo">로그아웃</button><button id="ck0">문제 파일 검수</button><div id="ck" class="c s" style="white-space:pre-line;display:none"></div>
+/* ---- 랭킹 (단원별) ---- */
+const UL=[['p','명제'],['f','함수'],['r','유리·무리']],MED=['🥇','🥈','🥉'];const fmt=t=>{const d=new Date(t),z=n=>String(n).padStart(2,'0');return isNaN(d)?'-':`${d.getMonth()+1}/${d.getDate()} ${z(d.getHours())}:${z(d.getMinutes())}`};let RK=[],BU='',BC='';
+async function board(m=''){A.innerHTML='<h1>🍎 교사용 관리</h1><p>불러오는 중…</p>';
+ try{RK=(await getDocs(collection(db,'rank'))).docs.map(d=>({id:d.id,...d.data()}))}catch(e){RK=[];m='불러오기 실패 ('+(e.code||e)+')'}rk(m)}
+function rk(m=''){
+ const cnt=u=>RK.filter(r=>r.unit==u).length;
+ if(!UL.some(x=>x[0]==BU))BU=(UL.find(x=>cnt(x[0]))||UL[0])[0];
+ const all=RK.filter(r=>r.unit==BU),cs=[...new Set(all.map(r=>cls(String(r.sid))))].sort();
+ if(BC&&!cs.includes(BC))BC='';
+ const rows=all.filter(r=>!BC||cls(String(r.sid))==BC).sort((a,b)=>b.score-a.score||a.t-b.t),
+ rn=rows.map((r,i)=>{let k=i;while(k>0&&rows[k-1].score==r.score)k--;return k+1}),UN_=UNM[BU];
+ A.innerHTML=`${NAV('b')}<p class="s">${m}</p><div class="nv ut">${UL.map(x=>`<button class="${x[0]==BU?'p':''}" data-u="${x[0]}">${x[1]} (${cnt(x[0])})</button>`).join('')}</div>
+<div class="fl2"><label>반 <select id="fb"><option value="">전체</option>${cs.map(c=>`<option value="${c}"${c==BC?' selected':''}>${cn(c)}</option>`).join('')}</select></label></div>
+<div class="c rc"><b>${UN_} 랭킹</b> <span class="s">(학번별 최고 점수, ${rows.length}명${BC?' · '+cn(BC):''})</span><div class="r"><table class="rk"><tr><th>순위</th><th>학번</th><th>점수</th><th>정답</th><th>기록 시각</th><th></th></tr>${rows.length?rows.map((r,i)=>`<tr><td>${MED[rn[i]-1]||rn[i]}</td><td>${esc(r.sid)}</td><td>${r.score}</td><td>${r.n}</td><td>${fmt(r.t)}</td><td><button data-d="${esc(r.id)}">삭제</button></td></tr>`).join(''):'<tr><td colspan="6" class="s">아직 기록이 없어요.</td></tr>'}</table></div></div>
+<button id="rf">새로고침</button><button id="rs">${UN_} 랭킹 초기화</button><button id="rsa">전체 단원 초기화</button><button id="lo">로그아웃</button><button id="ck0">문제 파일 검수</button><div id="ck" class="c s" style="white-space:pre-line;display:none"></div>
 <div class="c s"><b>비밀번호를 잊은 학생</b><br>Firebase 콘솔 > Authentication > 사용자에서 <code>학번@mj-student.example.com</code> 계정을 삭제하면, 학생이 같은 학번으로 다시 입장해 새 비밀번호를 정할 수 있어요. 기록은 위 표에서 학번 기준으로 남아 있거나 삭제할 수 있어요.</div>`;
  $('rf').onclick=()=>board();bindNav();
+ A.querySelectorAll('[data-u]').forEach(b=>b.onclick=()=>{BU=b.dataset.u;rk()});
+ $('fb').onchange=e=>{BC=e.target.value;rk()};
  $('ck0').onclick=async()=>{const o=$('ck');o.style.display='block';o.textContent='검사 중…';
   try{const wb=XLSX.read(await(await fetch('questions.xlsx?v='+Date.now())).arrayBuffer()),out=[];
    for(const n of wb.SheetNames){if(n=='사용법'||n=='입력도우미')continue;let ok=0;
@@ -31,8 +43,9 @@ async function board(m=''){A.innerHTML='<h1>🍎 교사용 관리</h1><p>불러�
      if(e)out.push('⚠ '+n+' '+(i+2)+'행: '+e);else ok++});
     out.unshift('✔ '+n+': 사용 가능한 문제 '+ok+'개')}
    o.textContent=out.join('\n')}catch(x){o.textContent='questions.xlsx를 불러오지 못했어요.'}};$('lo').onclick=()=>signOut(au);
- $('rs').onclick=async e=>{if(!e.target.dataset.c){e.target.dataset.c=1;e.target.textContent='한 번 더 누르면 전부 삭제됩니다';return}
-  try{await Promise.all(rows.map(r=>deleteDoc(doc(db,'rank',r.id))))}catch(x){}board('초기화했어요.')};
+ const rst=(id,list,label)=>$(id).onclick=async e=>{const b=e.target;if(!b.dataset.c){b.dataset.c=1;b.textContent=`한 번 더 누르면 ${label} 기록 ${list.length}개가 삭제됩니다`;return}
+  let bad=0;await Promise.all(list.map(r=>deleteDoc(doc(db,'rank',r.id)).catch(()=>bad++)));board(bad?`${bad}개를 지우지 못했어요.`:`${label} 기록을 초기화했어요.`)};
+ rst('rs',all,UN_+' 단원');rst('rsa',RK,'모든 단원');
  A.querySelectorAll('[data-d]').forEach(b=>b.onclick=async()=>{try{await deleteDoc(doc(db,'rank',b.dataset.d))}catch(x){}board()})}
 /* ---- 학생 현황 대시보드 ---- */
 const NAV=c=>`<h1>🍎 교사용 관리</h1><div class="nv"><button class="${c=='d'?'p':''}" data-n="d">📊 학생 현황</button><button class="${c=='b'?'p':''}" data-n="b">🏆 랭킹·관리</button></div>`;
